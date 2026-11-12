@@ -28,7 +28,7 @@ export const SPARKLE: CSSProperties = {
 export const badgeLines = (s: string) => s.split(/\\n|\n/).map((l) => l.trim()).filter(Boolean);
 
 /** Logo box: an uploaded image, or one/two lines of text with the first line larger. */
-export function BadgeBox({ text, img, className, style, firstClass = "text-[1.3em]", restClass = "text-[0.62em]" }: { text: string; img?: string | undefined; className?: string; style?: CSSProperties; firstClass?: string; restClass?: string }) {
+export function BadgeBox({ text, img, className, style, firstClass = "text-[1.3em]", restClass = "text-[0.62em]" }: { text: string; img?: string | undefined; className?: string | undefined; style?: CSSProperties | undefined; firstClass?: string; restClass?: string }) {
   const lines = badgeLines(text);
   return (
     <div className={cn("flex shrink-0 flex-col items-center justify-center overflow-hidden text-center font-black uppercase leading-[0.95]", className)} style={style}>
@@ -44,7 +44,7 @@ export function fitScale(len: number) {
   return len <= 26 ? 1 : len <= 34 ? 0.86 : len <= 44 ? 0.74 : len <= 56 ? 0.63 : 0.55;
 }
 
-export function FitLine({ text, k, i = 1, className, style }: { text: string; k?: number; i?: number; className?: string; style?: CSSProperties }) {
+export function FitLine({ text, k, i = 1, className, style }: { text: string; k?: number | undefined; i?: number | undefined; className?: string | undefined; style?: CSSProperties | undefined }) {
   return (
     <div className={cn("min-w-0 max-w-full", className)} style={style}>
       <P key={k ?? 0} i={i} className="truncate" style={{ fontSize: `${fitScale(text.length)}em` }}>{text}</P>
@@ -53,7 +53,7 @@ export function FitLine({ text, k, i = 1, className, style }: { text: string; k?
 }
 
 /** Right-to-left crawl for rolling text. */
-export function Crawl({ text, seconds, className, style }: { text: string; seconds: number; className?: string; style?: CSSProperties }) {
+export function Crawl({ text, seconds, className, style }: { text: string; seconds: number; className?: string | undefined; style?: CSSProperties | undefined }) {
   return (
     <div className={cn("relative min-w-0 flex-1 self-stretch overflow-hidden whitespace-nowrap", className)} style={style}>
       <div className="absolute inset-0 flex items-center">
@@ -68,7 +68,7 @@ export const ICONS: Record<string, LucideIcon> = {
   globe: Globe, heart: Heart, info: Info, calendar: Calendar, trophy: Trophy, megaphone: Megaphone, mic: Mic, tv: Tv, music: Music, gift: Gift,
 };
 
-export function CardIcon({ name, className, style }: { name?: string | undefined; className?: string; style?: CSSProperties }) {
+export function CardIcon({ name, className, style }: { name?: string | undefined; className?: string | undefined; style?: CSSProperties | undefined }) {
   const I = name ? ICONS[name] : undefined;
   return I ? <I className={className} style={style} strokeWidth={2.2} /> : null;
 }
