@@ -91,8 +91,8 @@ async function handle(request: Request, splat: string) {
     ]);
     let standby: unknown = null;
     if (channel?.standby_media_id) {
-      const { data: m } = await db.from("media_assets").select("id, title, storage_key, duration_seconds, status").eq("id", channel.standby_media_id).maybeSingle();
-      standby = m ? { ...m, url: await signed(m.storage_key) } : null;
+      const { data: m } = await db.from("media_assets").select("id, title, storage_key, source_url, duration_seconds, status").eq("id", channel.standby_media_id).maybeSingle();
+      standby = m ? { ...m, url: await mediaUrl(m) } : null;
     }
     return json({ channel, destination: destination ?? null, overlays: overlays ?? [], live_inputs: inputs ?? [], standby, server_time: new Date().toISOString() });
   }
@@ -124,10 +124,10 @@ async function handle(request: Request, splat: string) {
       ? await db.from("playlists").select("id, name, kind, shuffle, repeat").in("id", [...playlistIds])
       : { data: [] as { id: string; name: string; kind: string; shuffle: boolean; repeat: boolean }[] };
     const { data: media } = mediaIds.size
-      ? await db.from("media_assets").select("id, title, storage_key, duration_seconds, status, available, width, height").in("id", [...mediaIds])
+      ? await db.from("media_assets").select("id, title, storage_key, source_url, duration_seconds, status, available, width, height").in("id", [...mediaIds])
       : { data: [] as never[] };
     const mediaOut = await Promise.all(
-      (media ?? []).map(async (m) => ({ ...m, playable: m.status === "ready" && m.available && !!m.storage_key, url: m.status === "ready" ? await signed(m.storage_key, 6 * 3600) : null })),
+      (media ?? []).map(async (m) => ({ ...m, playable: m.status === "ready" && m.available && !!(m.storage_key || m.source_url), url: m.status === "ready" ? await mediaUrl(m, 6 * 3600) : null })),
     );
     return json({
       from, to, generated_at: new Date().toISOString(),
@@ -198,12 +198,18 @@ async function handle(request: Request, splat: string) {
 
   const mediaMatch = splat.match(/^media\/([0-9a-f-]{36})\/url$/);
   if (mediaMatch && request.method === "GET") {
-    const { data: m } = await db.from("media_assets").select("id, storage_key, status").eq("id", mediaMatch[1] ?? "").eq("channel_id", channelId).maybeSingle();
+    const { data: m } = await db.from("media_assets").select("id, storage_key, source_url, status").eq("id", mediaMatch[1] ?? "").eq("channel_id", channelId).maybeSingle();
     if (!m) return json({ error: "not found" }, 404);
-    return json({ id: m.id, url: await signed(m.storage_key, 6 * 3600) });
+    return json({ id: m.id, url: await mediaUrl(m, 6 * 3600) });
   }
 
   return json({ error: "not found" }, 404);
+}
+
+/** Bucket files get a fresh signed link; pasted public links are passed through unchanged. */
+async function mediaUrl(m: { storage_key: string | null; source_url: string | null }, ttl = 3600) {
+  if (m.storage_key) return signed(m.storage_key, ttl);
+  return m.source_url;
 }
 
 async function signed(key: string | null | undefined, ttl = 3600) {

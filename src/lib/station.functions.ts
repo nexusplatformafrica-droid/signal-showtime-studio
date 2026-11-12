@@ -109,11 +109,80 @@ export const getMediaPlaybackUrl = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ mediaId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const { data: row } = await context.supabase.from("media_assets").select("storage_key, status").eq("id", data.mediaId).single();
-    if (!row?.storage_key || row.status !== "ready") return { url: null as string | null };
+    const { data: row } = await context.supabase.from("media_assets").select("storage_key, source_url, status").eq("id", data.mediaId).single();
+    if (!row || row.status !== "ready") return { url: null as string | null };
     const { getR2, presignGet } = await import("@/lib/r2.server");
-    if (!getR2()) return { url: null as string | null };
-    return { url: await presignGet(row.storage_key, 3600) };
+    if (row.storage_key && getR2()) return { url: await presignGet(row.storage_key, 3600) };
+    return { url: row.storage_key ? null : row.source_url };
+  });
+
+/** Adds a library entry for a file that is already in R2 (pasted link) — nothing is uploaded or copied. */
+export const importMediaLink = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z.object({
+      channelId: z.string().uuid(),
+      url: z.string().min(8).max(2000),
+      title: z.string().max(200).optional(),
+      category: z.string().max(40),
+      folderId: z.string().uuid().nullable(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertRoles(context, MEDIA_ROLES);
+    const { getR2, headObject } = await import("@/lib/r2.server");
+    const { parseMediaLink } = await import("@/lib/media-link");
+    const r2 = getR2();
+    const link = parseMediaLink(data.url, r2 ? { accountId: r2.accountId, bucket: r2.bucket } : null);
+    if (!link.ok) throw new Error(link.error);
+
+    let size: number | null = null;
+    let mime: string | null = null;
+    if (link.kind === "bucket") {
+      const head = await headObject(link.key);
+      if (!head.ok) throw new Error(head.status === 404 ? "That file was not found in the R2 bucket. Check the link." : `R2 refused access to the file [${head.status}].`);
+      size = head.size || null;
+    } else {
+      let res: Response | null = null;
+      try {
+        res = await fetch(link.url, { method: "HEAD", redirect: "follow" });
+        if (!res.ok) res = await fetch(link.url, { method: "GET", headers: { range: "bytes=0-0" }, redirect: "follow" });
+      } catch {
+        throw new Error("Could not reach that link. Make sure the file is public (R2 public bucket or custom domain).");
+      }
+      if (!res.ok) throw new Error(res.status === 404 ? "No file at that link (404). Check the link." : `The link is not publicly readable [HTTP ${res.status}]. Turn on public access for the bucket or use its custom domain.`);
+      const range = res.headers.get("content-range")?.split("/")[1];
+      size = Number(range ?? res.headers.get("content-length") ?? 0) || null;
+      mime = res.headers.get("content-type");
+      await res.body?.cancel().catch(() => undefined);
+      if (mime && /^(text\/html|application\/json)/i.test(mime)) throw new Error("That link opens a web page, not a video file. Paste the direct link to the file.");
+    }
+
+    const { data: dupe } = await context.supabase.from("media_assets").select("title").eq("channel_id", data.channelId).eq("source_url", link.url).neq("status", "archived").maybeSingle();
+    if (dupe) throw new Error(`This file is already in the library as "${dupe.title}".`);
+
+    const { data: row, error } = await context.supabase
+      .from("media_assets")
+      .insert({
+        channel_id: data.channelId,
+        folder_id: data.folderId,
+        title: data.title?.trim() || link.title,
+        category: data.category as Database["public"]["Enums"]["media_category"],
+        status: "ready",
+        source_url: link.url,
+        storage_key: link.kind === "bucket" ? link.key : null,
+        storage_bucket: link.kind === "bucket" ? r2?.bucket ?? null : null,
+        file_size: size,
+        mime_type: mime && !/octet-stream/i.test(mime) ? mime.split(";")[0] ?? null : null,
+        original_filename: link.filename,
+        container: link.filename.split(".").pop()?.toLowerCase() ?? null,
+        fingerprint: size ? `${size}:${link.filename.toLowerCase()}` : null,
+        created_by: context.userId,
+      })
+      .select("id, title")
+      .single();
+    if (error || !row) throw new Error(error?.message ?? "Could not add the media");
+    return { id: row.id, title: row.title, playUrl: link.kind === "public" ? link.url : null };
   });
 
 export const deleteMediaAssets = createServerFn({ method: "POST" })
@@ -121,12 +190,13 @@ export const deleteMediaAssets = createServerFn({ method: "POST" })
   .inputValidator((d) => z.object({ ids: z.array(z.string().uuid()).min(1).max(200) }).parse(d))
   .handler(async ({ data, context }) => {
     await assertRoles(context, ["super_admin", "station_manager", "media_manager"]);
-    const { data: rows } = await context.supabase.from("media_assets").select("id, storage_key, upload_id").in("id", data.ids);
+    const { data: rows } = await context.supabase.from("media_assets").select("id, storage_key, upload_id, source_url").in("id", data.ids);
     const r2 = await import("@/lib/r2.server");
     const configured = !!r2.getR2();
     let storageErrors = 0;
     for (const row of rows ?? []) {
-      if (!configured || !row.storage_key) continue;
+      // Linked files (pasted R2 links) belong to the user's bucket; removing the entry never deletes them.
+      if (!configured || !row.storage_key || row.source_url) continue;
       try {
         if (row.upload_id) await r2.abortMultipart(row.storage_key, row.upload_id);
         else await r2.deleteObject(row.storage_key);

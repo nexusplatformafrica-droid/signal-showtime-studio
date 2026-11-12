@@ -39,3 +39,4 @@ use the editor.
 - Public site pages use the `theme-public` token scope; the admin uses the default dark broadcast tokens in src/styles.css.
 - Players get their URL from `playbackUrl` (src/lib/stream-url.ts): http-only HLS origins are served through the folder-locked relay `/api/public/hls/{slug}/*` because https pages block mixed content; never turn it into an open proxy.
 - The engine's push destination lives in `stream_destinations` (staff-only RLS), not `channels`, because `channels` is publicly readable and publish details must stay private.
+- Media can be linked instead of uploaded (`media_assets.source_url`, parsed by src/lib/media-link.ts); links into the connected bucket store `storage_key` so access stays signed, and deleting a linked entry never deletes the file — staff already own those files.

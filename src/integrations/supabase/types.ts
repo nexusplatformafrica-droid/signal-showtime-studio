@@ -477,6 +477,7 @@ export type Database = {
           id: string
           mime_type: string | null
           original_filename: string | null
+          source_url: string | null
           status: Database["public"]["Enums"]["media_status"]
           storage_bucket: string | null
           storage_key: string | null
@@ -506,6 +507,7 @@ export type Database = {
           id?: string
           mime_type?: string | null
           original_filename?: string | null
+          source_url?: string | null
           status?: Database["public"]["Enums"]["media_status"]
           storage_bucket?: string | null
           storage_key?: string | null
@@ -535,6 +537,7 @@ export type Database = {
           id?: string
           mime_type?: string | null
           original_filename?: string | null
+          source_url?: string | null
           status?: Database["public"]["Enums"]["media_status"]
           storage_bucket?: string | null
           storage_key?: string | null
