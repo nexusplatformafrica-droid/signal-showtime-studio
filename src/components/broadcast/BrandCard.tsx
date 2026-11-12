@@ -15,12 +15,12 @@ function Time({ value }: { value: string }) {
   return <>{m[1]}<span className="ml-[0.08em] text-[0.55em] lowercase">{m[2]}</span></>;
 }
 
-function Photo({ src, c1, c2, className, contain }: { src?: string; c1: string; c2: string; className?: string; contain?: boolean }) {
+function Photo({ src, c1, c2, className, contain }: { src?: string | undefined; c1: string; c2: string; className?: string; contain?: boolean }) {
   if (src) return <img src={src} alt="" className={cn("h-full w-full", contain ? "object-contain object-bottom" : "object-cover object-top", className)} />;
   return <div className={cn("grid h-full w-full place-items-center", className)} style={{ background: `linear-gradient(135deg, ${c2}, ${c1})` }}><span className="wordmark text-[0.45em] opacity-80">MOVIE MAX</span></div>;
 }
 
-interface DesignProps { t: CardText; img?: string; c1: string; c2: string; uid: string }
+interface DesignProps { t: CardText; img?: string | undefined; c1: string; c2: string; uid: string }
 
 const DESIGNS: Record<string, (p: DesignProps) => ReactNode> = {
   showcase: ({ t, img, c1, c2 }) => (
@@ -226,14 +226,14 @@ const DESIGNS: Record<string, (p: DesignProps) => ReactNode> = {
  * A branded broadcast card (Up next). Scales with the frame width (container units), so the
  * website, the 1920×1080 output page and every preview look identical.
  */
-export function BrandCard({ config, text, phase, size }: { config: OverlayConfig; text: CardText; phase: CardPhase; size?: number }) {
+export function BrandCard({ config, text, phase, size }: { config: OverlayConfig; text: CardText; phase: CardPhase; size?: number | undefined }) {
   const uid = useId().replace(/:/g, "");
   const d = designById(config.design);
   const c1 = config.color ?? d.c1;
   const c2 = config.color2 ?? d.c2;
   const ms = Math.min(3000, Math.max(150, Number(config.transition_ms) || 700));
   const w = size ?? config.size ?? 40;
-  const Design = DESIGNS[d.id] ?? DESIGNS.classic;
+  const Design = DESIGNS[d.id] ?? DESIGNS["classic"]!;
   return (
     <div
       className="mmx-card relative text-graphic-ink"

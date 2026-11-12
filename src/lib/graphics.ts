@@ -8,28 +8,28 @@ export type OverlayKind =
   | "on_air" | "live_indicator" | "ad_banner" | "station_id" | "programme_title" | "countdown";
 
 export interface OverlayConfig {
-  position?: string;
-  size?: number;
-  opacity?: number;
-  color?: string;
-  text?: string;
-  title?: string;
-  subtitle?: string;
-  speed?: number;
-  duration?: number;
-  logo_url?: string;
+  position?: string | undefined;
+  size?: number | undefined;
+  opacity?: number | undefined;
+  color?: string | undefined;
+  text?: string | undefined;
+  title?: string | undefined;
+  subtitle?: string | undefined;
+  speed?: number | undefined;
+  duration?: number | undefined;
+  logo_url?: string | undefined;
   /** Branded card design (src/lib/brand-cards.ts) and its content. */
-  design?: string;
-  image_url?: string;
-  kicker?: string;
-  time_text?: string;
-  color2?: string;
-  transition_in?: string;
-  transition_out?: string;
-  transition_ms?: number;
+  design?: string | undefined;
+  image_url?: string | undefined;
+  kicker?: string | undefined;
+  time_text?: string | undefined;
+  color2?: string | undefined;
+  transition_in?: string | undefined;
+  transition_out?: string | undefined;
+  transition_ms?: number | undefined;
   /** "cycle" = after "now showing", every 10 minutes; "before_next" = `lead` seconds before the next programme starts. */
-  show_mode?: "cycle" | "before_next";
-  lead?: number;
+  show_mode?: "cycle" | "before_next" | undefined;
+  lead?: number | undefined;
 }
 
 export interface LiveOverlay {

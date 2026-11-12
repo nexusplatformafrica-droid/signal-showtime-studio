@@ -35,7 +35,8 @@ export const BRAND_DESIGNS: BrandDesign[] = [
   { id: "classic", name: "Classic", c1: "#e5322d", c2: "#111827", photo: false },
 ];
 
-export const designById = (id?: string) => BRAND_DESIGNS.find((d) => d.id === id) ?? BRAND_DESIGNS[BRAND_DESIGNS.length - 1];
+const CLASSIC: BrandDesign = BRAND_DESIGNS.find((d) => d.id === "classic")!;
+export const designById = (id?: string): BrandDesign => BRAND_DESIGNS.find((d) => d.id === id) ?? CLASSIC;
 
 export interface TextTemplate {
   id: string;
@@ -117,7 +118,7 @@ export interface CardText { kicker: string; title: string; subtitle: string; tim
 
 /** The four lines a card shows, from its config. Empty title/time fall back to the next programme automatically. */
 export function cardTextFor(
-  c: { kicker?: string; title?: string; subtitle?: string; time_text?: string },
+  c: { kicker?: string | undefined; title?: string | undefined; subtitle?: string | undefined; time_text?: string | undefined },
   v: CardVars,
 ): CardText {
   return {
