@@ -13,7 +13,7 @@ Base URL: `https://<your-site>/api/public/engine/v1`
 ## Endpoints
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/config` | Channel output settings, published graphics overlays, live inputs (with stream keys), standby media (signed URL) |
+| GET | `/config` | Channel output settings, `destination` (where to push the programme, e.g. Wowza `rtmp_url` + `stream_name`; the publish password, if any, stays on the engine host), published graphics overlays, live inputs (with stream keys), standby media (signed URL) |
 | GET | `/schedule?from=ISO&to=ISO` | Published schedule entries, playlists with ordered items, media with signed download URLs (6 h) |
 | POST | `/heartbeat` | Report real broadcast state every 5–10 s. The dashboard shows ON AIR only while heartbeats are < 30 s old and `on_air` is true |
 | POST | `/events` | `{ events: [{ event_type, severity, message, entry_id?, media_id?, details?, occurred_at? }] }` |
