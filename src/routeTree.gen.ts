@@ -10,33 +10,54 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiPublicThumbnailsSplatRouteImport } from './routes/api/public/thumbnails/$'
+import { Route as ApiPublicEngineV1SplatRouteImport } from './routes/api/public/engine/v1/$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicThumbnailsSplatRoute =
+  ApiPublicThumbnailsSplatRouteImport.update({
+    id: '/api/public/thumbnails/$',
+    path: '/api/public/thumbnails/$',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicEngineV1SplatRoute = ApiPublicEngineV1SplatRouteImport.update({
+  id: '/api/public/engine/v1/$',
+  path: '/api/public/engine/v1/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/public/thumbnails/$': typeof ApiPublicThumbnailsSplatRoute
+  '/api/public/engine/v1/$': typeof ApiPublicEngineV1SplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/public/thumbnails/$': typeof ApiPublicThumbnailsSplatRoute
+  '/api/public/engine/v1/$': typeof ApiPublicEngineV1SplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/public/thumbnails/$': typeof ApiPublicThumbnailsSplatRoute
+  '/api/public/engine/v1/$': typeof ApiPublicEngineV1SplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/api/public/thumbnails/$' | '/api/public/engine/v1/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/api/public/thumbnails/$' | '/api/public/engine/v1/$'
+  id: '__root__' | '/' | '/api/public/thumbnails/$' | '/api/public/engine/v1/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiPublicThumbnailsSplatRoute: typeof ApiPublicThumbnailsSplatRoute
+  ApiPublicEngineV1SplatRoute: typeof ApiPublicEngineV1SplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +69,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/thumbnails/$': {
+      id: '/api/public/thumbnails/$'
+      path: '/api/public/thumbnails/$'
+      fullPath: '/api/public/thumbnails/$'
+      preLoaderRoute: typeof ApiPublicThumbnailsSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/engine/v1/$': {
+      id: '/api/public/engine/v1/$'
+      path: '/api/public/engine/v1/$'
+      fullPath: '/api/public/engine/v1/$'
+      preLoaderRoute: typeof ApiPublicEngineV1SplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiPublicThumbnailsSplatRoute: ApiPublicThumbnailsSplatRoute,
+  ApiPublicEngineV1SplatRoute: ApiPublicEngineV1SplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
