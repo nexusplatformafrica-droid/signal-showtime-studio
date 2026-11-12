@@ -144,7 +144,8 @@ export function BreakingCard({ config, text, phase, size }: { config: OverlayCon
   const c1 = config.color ?? d.c1;
   const c2 = config.color2 ?? d.c2;
   const ms = Math.min(3000, Math.max(150, Number(config.transition_ms) || 700));
-  const w = size ?? Math.min(90, config.size ?? 58);
+  // Banners saved before the designs existed used size 100 (a full-width bar); show those at the design size.
+  const w = size ?? (config.size && config.size < 95 ? config.size : 58);
   const Design = DESIGNS[d.id] ?? DESIGNS["by-top-tag"]!;
   return (
     <div

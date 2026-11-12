@@ -15,8 +15,8 @@
 - [x] Real on-screen graphics (published state only) on website + /output page; OBS → Wowza guide in Streaming Endpoints
 - [x] Up next branding studio: 16 designs, text templates, own picture, colours, appear/disappear transitions, timing, live preview
 - [x] News branding studio: 15 lower-third designs, wording templates, rotating headlines, scrolling description, logo upload, transitions, repeat timing
-- [ ] Rolling ticker (11), breaking news (16) and pop-up (10) designs: branding studios, on-air drawing on website + /output + preview, Show now / Take off air buttons, publish only restarts changed graphics
-- [ ] Public website (home, watch, guide, sign-in) restyled to the glassy light theme (warm white, orange gradients, emerald green, soft rounded cards)
+- [x] Rolling ticker (11), breaking news (16) and pop-up (10) designs: branding studios, on-air drawing on website + /output + preview, Show now / Take off air buttons, publish only restarts changed graphics
+- [x] Public website (home, watch, guide, sign-in) restyled to the glassy light theme (warm white, orange gradients, emerald green, soft rounded cards)
 - [ ] Send /output to Wowza with OBS on an always-on computer (needs user's computer + Wowza Live Broadcast password)
 - [ ] Optional: run the engine on a 24/7 server with the Wowza live password, then verify the Wowza link for apps/TV boxes (needs user's server + Wowza password; site must be published)
 - [ ] Phase 2: Advertisement campaigns & commercial breaks manager
