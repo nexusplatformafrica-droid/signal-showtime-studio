@@ -844,6 +844,47 @@ export type Database = {
           },
         ]
       }
+      stream_destinations: {
+        Row: {
+          channel_id: string
+          enabled: boolean
+          id: string
+          provider: string
+          rtmp_url: string | null
+          stream_name: string | null
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          channel_id: string
+          enabled?: boolean
+          id?: string
+          provider?: string
+          rtmp_url?: string | null
+          stream_name?: string | null
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          channel_id?: string
+          enabled?: boolean
+          id?: string
+          provider?: string
+          rtmp_url?: string | null
+          stream_name?: string | null
+          updated_at?: string
+          username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stream_destinations_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: true
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stream_health_checks: {
         Row: {
           channel_id: string
