@@ -130,3 +130,21 @@ export const getWebPlayout = createServerFn({ method: "GET" }).handler(async () 
     playlists: (playlists ?? []).map((p) => ({ id: p.id, repeat: p.repeat, items: (items ?? []).filter((i) => i.playlist_id === p.id).map((i) => ({ media_id: i.media_id })) })),
   };
 });
+
+/** Published, enabled on-screen graphics for the live output (drafts never appear here). */
+export const getLiveGraphics = createServerFn({ method: "GET" }).handler(async () => {
+  const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+  const { data: channel } = await db.from("channels").select("id, timezone").eq("slug", CHANNEL_SLUG).maybeSingle();
+  if (!channel) return { timezone: "Africa/Kampala", overlays: [] };
+  const { data } = await db
+    .from("graphics_overlays")
+    .select("id, kind, name, published_config, show_from, show_until, published_at")
+    .eq("channel_id", channel.id)
+    .eq("published_enabled", true)
+    .not("published_config", "is", null)
+    .order("created_at");
+  return {
+    timezone: channel.timezone,
+    overlays: (data ?? []).map((o) => ({ id: o.id, kind: o.kind, name: o.name, config: o.published_config as Record<string, string | number>, show_from: o.show_from, show_until: o.show_until, published_at: o.published_at })),
+  };
+});
