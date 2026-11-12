@@ -12,6 +12,8 @@ interface Props {
   onChange: (patch: OverlayConfig) => void;
   onUpload: (file: File) => void;
   onPlay: () => void;
+  enabled: boolean;
+  onEnable: () => void;
 }
 
 function Step({ n, title, hint, children, className }: { n: number; title: string; hint?: string; children: React.ReactNode; className?: string }) {
@@ -27,7 +29,7 @@ function Step({ n, title, hint, children, className }: { n: number; title: strin
 }
 
 /** Branding studio for the "Up next" card: design, text, picture, colours, transitions and timing — all previewed live. */
-export function UpNextStudio({ config, vars, onChange, onUpload, onPlay }: Props) {
+export function UpNextStudio({ config, vars, onChange, onUpload, onPlay, enabled, onEnable }: Props) {
   const d = designById(config.design);
   const text = cardTextFor(config, vars);
   const set = (patch: OverlayConfig, replay = false) => { onChange(patch); if (replay) setTimeout(onPlay, 50); };
@@ -35,6 +37,12 @@ export function UpNextStudio({ config, vars, onChange, onUpload, onPlay }: Props
   return (
     <section className="panel">
       <div className="panel-header">Up next · branding studio<span className="normal-case tracking-normal">changes show in the preview above · publish to put them on air</span></div>
+      {!enabled && (
+        <div className="flex items-center justify-between gap-2 border-b border-border bg-warn/10 px-3 py-2 text-xs">
+          <span>Up next is switched off, so it isn't in the preview or on air.</span>
+          <Button type="button" size="xs" variant="panel" onClick={onEnable}>Switch on</Button>
+        </div>
+      )}
       <div className="grid gap-3 p-3 2xl:grid-cols-[minmax(0,1fr)_420px]">
         <Step n={1} title="Choose a design" hint="Each preview uses your own picture and text. Click one to use it.">
           <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-4">

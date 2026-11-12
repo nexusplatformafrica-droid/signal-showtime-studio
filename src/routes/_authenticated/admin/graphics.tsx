@@ -169,6 +169,8 @@ function GraphicsPage() {
             onChange={setCfg}
             onUpload={(f) => uploadImage(f, "image_url")}
             onPlay={playTransition}
+            enabled={!!enabled[active.id]}
+            onEnable={() => { setEnabled((e) => ({ ...e, [active.id]: true })); setTimeout(playTransition, 50); }}
           />
         </fieldset>
       )}
