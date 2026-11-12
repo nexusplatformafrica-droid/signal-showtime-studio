@@ -56,6 +56,7 @@ export function ScheduledPlayer({ bundle, skewMs = 0, poster, controls = true, m
         // Browsers block autoplay with sound: fall back to muted so the picture still runs.
         if (!v.muted) { v.muted = true; setMuted(true); return v.play().then(() => setBlocked(false)).catch(() => setBlocked(true)); }
         setBlocked(true);
+        return undefined;
       });
     const seekToClock = () => {
       const p = pickWebProgramme(bundleRef.current, clock());
