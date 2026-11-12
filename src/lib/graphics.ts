@@ -18,6 +18,18 @@ export interface OverlayConfig {
   speed?: number;
   duration?: number;
   logo_url?: string;
+  /** Branded card design (src/lib/brand-cards.ts) and its content. */
+  design?: string;
+  image_url?: string;
+  kicker?: string;
+  time_text?: string;
+  color2?: string;
+  transition_in?: string;
+  transition_out?: string;
+  transition_ms?: number;
+  /** "cycle" = after "now showing", every 10 minutes; "before_next" = `lead` seconds before the next programme starts. */
+  show_mode?: "cycle" | "before_next";
+  lead?: number;
 }
 
 export interface LiveOverlay {
@@ -36,6 +48,8 @@ export interface GraphicsContext {
   live: boolean;
   title: string | null;
   nextTitle: string | null;
+  /** When the next programme starts (ms), for "up next" times and "before next" timing. */
+  nextStartsAt?: number | null;
   /** When the current programme started, for "now showing" timing. */
   programmeStartedAt: number | null;
 }
@@ -68,8 +82,10 @@ export function isOverlayVisible(o: LiveOverlay, ctx: GraphicsContext): boolean 
     case "programme_title":
       return ctx.live && !!ctx.title && inCycle(sinceStart);
     case "next_programme":
+      if (!ctx.nextTitle && !o.config.title) return false;
+      if (o.config.show_mode === "before_next") return beforeNextRemaining(o, ctx) != null;
       // Shown right after "now showing" so they never overlap.
-      return ctx.live && !!ctx.nextTitle && inCycle(sinceStart, 1);
+      return ctx.live && inCycle(sinceStart, 1);
     case "lower_third":
       // Once, for `duration` seconds after it is published (0 = stays up).
       return dur === 0 || (sincePublish >= 0 && sincePublish < dur);
@@ -79,6 +95,32 @@ export function isOverlayVisible(o: LiveOverlay, ctx: GraphicsContext): boolean 
     default:
       return true;
   }
+}
+
+/** "Before next" window: from `lead` s before the next start, for `duration` s (0 = until it starts). Returns ms left, or null when outside. */
+function beforeNextRemaining(o: LiveOverlay, ctx: GraphicsContext): number | null {
+  if (ctx.nextStartsAt == null) return null;
+  const lead = Math.max(5, Number(o.config.lead) || 120) * 1000;
+  const dur = Math.max(0, Number(o.config.duration) || 0) * 1000;
+  const from = ctx.nextStartsAt - lead;
+  const until = dur > 0 ? Math.min(from + dur, ctx.nextStartsAt) : ctx.nextStartsAt;
+  return ctx.now >= from && ctx.now < until ? until - ctx.now : null;
+}
+
+/** Milliseconds a visible timed graphic has left on screen (null = stays up), used to play its exit animation in time. */
+export function overlayRemainingMs(o: LiveOverlay, ctx: GraphicsContext): number | null {
+  const dur = Math.max(0, Number(o.config.duration) || 0);
+  if (o.kind === "next_programme" && o.config.show_mode === "before_next") return beforeNextRemaining(o, ctx);
+  if (dur === 0) return null;
+  const slot = o.kind === "next_programme" ? 1 : 0;
+  let since: number | null = null;
+  if (o.kind === "next_programme" || o.kind === "now_showing" || o.kind === "programme_title") since = ctx.programmeStartedAt != null ? (ctx.now - ctx.programmeStartedAt) / 1000 : null;
+  else if (o.kind === "lower_third") return o.published_at ? Math.max(0, dur * 1000 - (ctx.now - Date.parse(o.published_at))) : null;
+  else if (o.kind === "ad_banner" || o.kind === "station_id") since = o.published_at ? (ctx.now - Date.parse(o.published_at)) / 1000 : 0;
+  else return null;
+  if (since == null) return null;
+  const t = since % GRAPHICS_CYCLE_S;
+  return Math.max(0, ((slot + 1) * dur - t) * 1000);
 }
 
 /** Seconds for one ticker pass at `speed` px/s across a 1920px-wide frame. */
