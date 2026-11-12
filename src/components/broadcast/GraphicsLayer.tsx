@@ -1,6 +1,8 @@
 import { Wordmark } from "@/components/brand/Wordmark";
 import { formatClock } from "@/lib/broadcast";
-import { isOverlayVisible, tickerSeconds, type GraphicsContext, type LiveOverlay } from "@/lib/graphics";
+import { isOverlayVisible, overlayRemainingMs, tickerSeconds, type GraphicsContext, type LiveOverlay } from "@/lib/graphics";
+import { cardPhase, cardTextFor, type CardPhase } from "@/lib/brand-cards";
+import { BrandCard } from "@/components/broadcast/BrandCard";
 import { cn } from "@/lib/utils";
 
 const pos = (p?: string) => {
@@ -29,7 +31,9 @@ function groupByPosition(list: LiveOverlay[]): [string, LiveOverlay[]][] {
  * Broadcast graphics drawn over the picture. Sizes scale with the player width (container
  * units), so the website, the 1920×1080 output page and the admin preview match.
  */
-export function GraphicsLayer({ overlays, ctx, timezone, className }: { overlays: LiveOverlay[]; ctx: GraphicsContext; timezone: string; className?: string }) {
+export interface GraphicsReplay { id: string; key: number; phase: CardPhase }
+
+export function GraphicsLayer({ overlays, ctx, timezone, className, replay }: { overlays: LiveOverlay[]; ctx: GraphicsContext; timezone: string; className?: string; replay?: GraphicsReplay | null }) {
   const visible = overlays.filter((o) => isOverlayVisible(o, ctx));
   const bars = visible.filter((o) => BARS.has(o.kind) && (o.config.position ?? "bottom") === "bottom")
     .sort((a) => (a.kind === "breaking_news" ? -1 : 1));
@@ -43,16 +47,22 @@ export function GraphicsLayer({ overlays, ctx, timezone, className }: { overlays
       {items.map((o) => {
         const c = o.config;
         const accent = { backgroundColor: c.color ?? "var(--tally-program)" };
+        if (o.kind === "next_programme") {
+          const rp = replay?.id === o.id ? replay : null;
+          const phase = rp ? rp.phase : cardPhase(overlayRemainingMs(o, ctx), Number(c.transition_ms) || 700);
+          const text = cardTextFor(c, { title: ctx.nextTitle ?? "", startsAt: ctx.nextStartsAt ?? null, now: ctx.now, timezone });
+          return <div key={`${o.id}:${rp?.key ?? ""}`} style={{ opacity: c.opacity ?? 1 }}><BrandCard config={c} text={text} phase={phase} /></div>;
+        }
         const style: React.CSSProperties = { opacity: c.opacity ?? 1, width: BARS.has(o.kind) ? "94cqw" : o.kind === "logo" ? `${c.size ?? 8}cqw` : undefined, maxWidth: `${Math.max(c.size ?? 30, 30)}cqw` };
         return (
           <div key={o.id} style={style}>
             {o.kind === "logo" && (c.logo_url ? <img src={c.logo_url} alt="" className="w-full" /> : <Wordmark className="text-[clamp(8px,2.2cqw,48px)]" />)}
             {(o.kind === "on_air" || o.kind === "live_indicator") && <span className="inline-block whitespace-nowrap rounded-sm px-[0.6em] py-[0.2em] font-bold uppercase tracking-widest text-program-foreground" style={{ ...accent, ...fs }}>{c.text || (o.kind === "on_air" ? "On Air" : "Live")}</span>}
             {o.kind === "clock" && <span className="timecode inline-block whitespace-nowrap rounded-sm bg-inset/80 px-[0.5em] py-[0.15em] font-semibold" style={fs}>{formatClock(ctx.now, timezone).slice(0, 5)}</span>}
-            {(o.kind === "now_showing" || o.kind === "next_programme" || o.kind === "programme_title") && (
+            {(o.kind === "now_showing" || o.kind === "programme_title") && (
               <div className="animate-in fade-in slide-in-from-left-4 bg-inset/90" style={fs}>
-                <div className="px-[0.6em] py-[0.2em] text-[0.7em] font-bold uppercase tracking-widest text-program-foreground" style={accent}>{o.kind === "next_programme" ? "Up next" : "Now showing"}</div>
-                <div className="max-w-[40cqw] truncate px-[0.6em] py-[0.3em] font-semibold">{o.kind === "next_programme" ? ctx.nextTitle : ctx.title}</div>
+                <div className="px-[0.6em] py-[0.2em] text-[0.7em] font-bold uppercase tracking-widest text-program-foreground" style={accent}>Now showing</div>
+                <div className="max-w-[40cqw] truncate px-[0.6em] py-[0.3em] font-semibold">{ctx.title}</div>
               </div>
             )}
             {o.kind === "lower_third" && (

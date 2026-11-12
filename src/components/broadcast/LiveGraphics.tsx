@@ -25,7 +25,7 @@ export function LiveGraphics({ bundle, skewMs = 0 }: { bundle: PlayoutBundle | n
     <GraphicsLayer
       overlays={overlays}
       timezone={data.timezone}
-      ctx={{ now, live: !!pick, title: pick?.title ?? null, nextTitle: next?.title ?? null, programmeStartedAt: pick ? Date.parse(pick.entry.starts_at) : null }}
+      ctx={{ now, live: !!pick, title: pick?.title ?? null, nextTitle: next?.title ?? null, nextStartsAt: next ? Date.parse(next.starts_at) : null, programmeStartedAt: pick ? Date.parse(pick.entry.starts_at) : null }}
     />
   );
 }

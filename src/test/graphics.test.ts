@@ -34,3 +34,34 @@ describe("on-screen graphics timing", () => {
     expect(isOverlayVisible(o, ctx(30))).toBe(false);
   });
 });
+
+import { overlayRemainingMs } from "@/lib/graphics";
+import { cardPhase, cardTextFor, fillCardText } from "@/lib/brand-cards";
+
+describe("up next branding", () => {
+  const nextAt = Date.parse("2026-11-12T14:20:00Z"); // 17:20 in Kampala
+  it("'before next' shows from `lead` seconds before the next programme, for its duration", () => {
+    const o = ov("next_programme", { show_mode: "before_next", lead: 120, duration: 30 });
+    const at = (sBefore: number) => ({ ...ctx(0), now: nextAt - sBefore * 1000, nextStartsAt: nextAt });
+    expect(isOverlayVisible(o, at(130))).toBe(false);
+    expect(isOverlayVisible(o, at(110))).toBe(true);
+    expect(overlayRemainingMs(o, at(110))).toBe(20_000);
+    expect(isOverlayVisible(o, at(85))).toBe(false);
+  });
+  it("'before next' with duration 0 stays up until the next programme starts", () => {
+    const o = ov("next_programme", { show_mode: "before_next", lead: 60, duration: 0 });
+    expect(isOverlayVisible(o, { ...ctx(0), now: nextAt - 5_000, nextStartsAt: nextAt })).toBe(true);
+    expect(isOverlayVisible(o, { ...ctx(0), now: nextAt, nextStartsAt: nextAt })).toBe(false);
+  });
+  it("plays the exit animation when the card is about to leave", () => {
+    expect(cardPhase(5_000, 700)).toBe("hold");
+    expect(cardPhase(900, 700)).toBe("out");
+    expect(cardPhase(null, 700)).toBe("hold");
+  });
+  it("fills {title}, {time} and {day} from the schedule in the channel timezone", () => {
+    const v = { title: "Magical Love Story", startsAt: nextAt, now: nextAt - 3_600_000, timezone: "Africa/Kampala" };
+    expect(fillCardText("{day} at {time}", v)).toBe("TODAY at 5:20 PM");
+    expect(cardTextFor({}, v)).toEqual({ kicker: "UP NEXT", title: "Magical Love Story", subtitle: "", time: "5:20 PM" });
+    expect(cardTextFor({ title: "My own name", kicker: "COMING UP", time_text: "" }, v).title).toBe("My own name");
+  });
+});

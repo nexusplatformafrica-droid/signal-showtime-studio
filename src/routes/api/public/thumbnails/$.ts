@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 // Serves programme thumbnails and channel logos from private storage. Paths are random UUIDs.
-const SAFE = /^(?:logos\/)?[0-9a-f-]{36}\.(jpg|png|webp)$/;
+const SAFE = /^(?:(?:logos|brand)\/)?[0-9a-f-]{36}\.(jpg|png|webp)$/;
 
 export const Route = createFileRoute("/api/public/thumbnails/$")({
   server: {
