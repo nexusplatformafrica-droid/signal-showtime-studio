@@ -1,18 +1,25 @@
 #!/usr/bin/env node
 /**
- * MOVIE MAX playout engine (v1.0.0)
- * Plays the published MOVIE MAX schedule with FFmpeg and pushes it to your streaming provider (e.g. Wowza).
- * Needs Node.js 18+ and FFmpeg. Run it on a computer that stays on (a small Linux server is best).
+ * MOVIE MAX playout engine (v1.1.0)
+ * Plays the published MOVIE MAX schedule with FFmpeg, 24/7.
+ * Needs Node.js 18+ and FFmpeg. Run it on a computer that stays on (e.g. a free Oracle Cloud server).
  *
  *   MMX_API=https://your-site/api/public/engine/v1 MMX_TOKEN=mmx_eng_... node movie-max-engine.mjs
  *
- * Optional: MMX_PUBLISH_USER / MMX_PUBLISH_PASS (Wowza live-broadcast login), FFMPEG=/path/to/ffmpeg, MMX_HOST=name.
+ * Output (MMX_OUTPUT):
+ *   hls  – this computer is the stream server: serves http://<this-ip>/live/playlist.m3u8 (no Wowza needed)
+ *   rtmp – push to the RTMP destination saved in Streaming Endpoints (Wowza, YouTube…) — the default
+ * Optional: MMX_HLS_PORT (80), MMX_HLS_DIR (./hls), MMX_PUBLISH_USER / MMX_PUBLISH_PASS (RTMP login),
+ *           FFMPEG=/path/to/ffmpeg, MMX_HOST=name.
  */
 import { spawn } from "node:child_process";
+import { createServer } from "node:http";
+import { createReadStream, mkdirSync, readdirSync, statSync, unlinkSync } from "node:fs";
 import { hostname } from "node:os";
+import { join, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 
-export const VERSION = "1.0.0";
+export const VERSION = "1.1.0";
 
 /** Decides what should be on air at `now` from a /schedule response. Pure, so it can be tested. */
 export function pickProgramme(schedule, now, skippedKey = null) {
@@ -57,7 +64,7 @@ export function pickProgramme(schedule, now, skippedKey = null) {
 }
 
 /** Builds the FFmpeg arguments for one programme (or the standby slate when `input` is null). */
-export function ffmpegArgs({ input, offset = 0, loop = false, out, resolution = "1280x720", fps = 25, vKbps = 2500, aKbps = 128 }) {
+export function ffmpegArgs({ input, offset = 0, loop = false, out, hls = null, resolution = "1280x720", fps = 25, vKbps = 2500, aKbps = 128 }) {
   const [w, h] = String(resolution).split("x").map(Number);
   const W = w || 1280, H = h || 720, F = fps || 25;
   const src = input
@@ -71,8 +78,62 @@ export function ffmpegArgs({ input, offset = 0, loop = false, out, resolution = 
     "-c:v", "libx264", "-preset", "veryfast", "-b:v", `${vKbps}k`, "-maxrate", `${vKbps}k`, "-bufsize", `${vKbps * 2}k`,
     "-g", String(F * 2), "-keyint_min", String(F * 2), "-sc_threshold", "0",
     "-c:a", "aac", "-b:a", `${aKbps}k`, "-ar", "44100", "-ac", "2",
-    "-f", "flv", out,
+    ...(hls ? hlsOutputArgs(hls) : ["-f", "flv", out]),
   ];
+}
+
+/**
+ * HLS output into `dir`. Each FFmpeg run gets its own segment names (`tag`) and appends to the same
+ * playlist, so viewers keep watching across programme changes without reloading.
+ */
+export function hlsOutputArgs({ dir, tag, segSeconds = 4, listSize = 8 }) {
+  const safeTag = String(tag).replace(/[^a-z0-9]/gi, "").slice(0, 24) || "s";
+  return [
+    "-f", "hls", "-hls_time", String(segSeconds), "-hls_list_size", String(listSize),
+    "-hls_flags", "delete_segments+append_list+discont_start+omit_endlist+independent_segments",
+    "-hls_segment_filename", join(dir, `seg-${safeTag}-%d.ts`),
+    join(dir, "playlist.m3u8"),
+  ];
+}
+
+const HLS_TYPES = { ".m3u8": "application/vnd.apple.mpegurl", ".ts": "video/mp2t" };
+
+/** Maps a request path like /live/playlist.m3u8 to a file inside `dir`; null for anything else. */
+export function hlsFileFor(dir, urlPath) {
+  const m = /^\/live\/([a-z0-9-]+\.(m3u8|ts))$/i.exec(String(urlPath).split("?")[0]);
+  if (!m) return null;
+  const root = resolve(dir);
+  const file = resolve(root, m[1]);
+  if (!file.startsWith(root + sep)) return null;
+  return { file, type: HLS_TYPES[`.${m[2].toLowerCase()}`], playlist: m[2].toLowerCase() === "m3u8" };
+}
+
+/** Tiny built-in web server for the HLS folder (CORS on, playlists never cached). */
+function serveHls(dir, port, log) {
+  const server = createServer((req, res) => {
+    const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "range" };
+    if (req.method === "OPTIONS") { res.writeHead(204, cors); return res.end(); }
+    if (req.url === "/" || req.url === "/health") { res.writeHead(200, { ...cors, "content-type": "text/plain" }); return res.end(`MOVIE MAX engine ${VERSION} – stream at /live/playlist.m3u8\n`); }
+    const hit = req.method === "GET" || req.method === "HEAD" ? hlsFileFor(dir, req.url ?? "") : null;
+    let size = 0;
+    try { if (hit) size = statSync(hit.file).size; } catch { size = -1; }
+    if (!hit || size < 0) { res.writeHead(404, { ...cors, "content-type": "text/plain" }); return res.end("Not found"); }
+    res.writeHead(200, { ...cors, "content-type": hit.type, "content-length": size, "cache-control": hit.playlist ? "no-cache, no-store" : "public, max-age=60" });
+    if (req.method === "HEAD") return res.end();
+    createReadStream(hit.file).on("error", () => res.destroy()).pipe(res);
+  });
+  server.on("error", (e) => log(`stream server error: ${e.code === "EACCES" ? `port ${port} needs admin rights (run as root or set MMX_HLS_PORT=8080)` : e.message}`));
+  server.listen(port, () => log(`Stream server on port ${port} → /live/playlist.m3u8`));
+  // Remove old segments left behind by earlier FFmpeg runs.
+  setInterval(() => {
+    try {
+      for (const f of readdirSync(dir)) {
+        if (!f.endsWith(".ts")) continue;
+        const p = join(dir, f);
+        if (Date.now() - statSync(p).mtimeMs > 5 * 60_000) unlinkSync(p);
+      }
+    } catch {}
+  }, 60_000);
 }
 
 export function publishUrl(dest, user, pass) {
@@ -90,6 +151,9 @@ async function main() {
   const TOKEN = process.env.MMX_TOKEN ?? "";
   const FFMPEG = process.env.FFMPEG || "ffmpeg";
   const HOST = process.env.MMX_HOST || hostname();
+  const OUTPUT = (process.env.MMX_OUTPUT || "rtmp").toLowerCase() === "hls" ? "hls" : "rtmp";
+  const HLS_DIR = resolve(process.env.MMX_HLS_DIR || "hls");
+  const HLS_PORT = Number(process.env.MMX_HLS_PORT) || 80;
   if (!API || !TOKEN) {
     console.error("Set MMX_API (e.g. https://your-site/api/public/engine/v1) and MMX_TOKEN (mmx_eng_…) first.");
     process.exit(1);
@@ -120,10 +184,11 @@ async function main() {
   }
 
   function startFfmpeg(target) {
-    const out = publishUrl(config?.destination, process.env.MMX_PUBLISH_USER, process.env.MMX_PUBLISH_PASS);
-    if (!out) { lastError = "No streaming destination configured (Streaming Endpoints)."; return; }
-    const ch = config.channel ?? {};
-    const args = ffmpegArgs({ input: target.url, offset: target.offset, loop: target.loop, out, resolution: ch.output_resolution === "1080p" ? "1920x1080" : ch.output_resolution === "720p" ? "1280x720" : ch.output_resolution, fps: ch.output_fps, vKbps: ch.video_bitrate_kbps, aKbps: ch.audio_bitrate_kbps });
+    const out = OUTPUT === "rtmp" ? publishUrl(config?.destination, process.env.MMX_PUBLISH_USER, process.env.MMX_PUBLISH_PASS) : null;
+    if (OUTPUT === "rtmp" && !out) { lastError = "No streaming destination configured (Streaming Endpoints)."; return; }
+    const hls = OUTPUT === "hls" ? { dir: HLS_DIR, tag: Date.now().toString(36) } : null;
+    const ch = config?.channel ?? {};
+    const args = ffmpegArgs({ input: target.url, offset: target.offset, loop: target.loop, out, hls, resolution: ch.output_resolution === "1080p" ? "1920x1080" : ch.output_resolution === "720p" ? "1280x720" : ch.output_resolution, fps: ch.output_fps, vKbps: ch.video_bitrate_kbps, aKbps: ch.audio_bitrate_kbps });
     target.startedAt = Date.now();
     lastProgress = 0;
     const p = spawn(FFMPEG, args, { stdio: ["ignore", "pipe", "pipe"] });
@@ -213,7 +278,8 @@ async function main() {
   log(`MOVIE MAX engine ${VERSION} on ${HOST} → ${API}`);
   await safe("config", loadConfig)();
   await safe("schedule", loadSchedule)();
-  if (config?.destination) log(`Pushing to ${config.destination.rtmp_url}/${config.destination.stream_name}`);
+  if (OUTPUT === "hls") { mkdirSync(HLS_DIR, { recursive: true }); serveHls(HLS_DIR, HLS_PORT, log); }
+  else if (config?.destination) log(`Pushing to ${config.destination.rtmp_url}/${config.destination.stream_name}`);
   event("engine_restarted", `Engine ${VERSION} started on ${HOST}`);
   tick();
   setInterval(tick, 2000);
