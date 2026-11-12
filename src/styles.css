@@ -71,6 +71,7 @@
   --color-graphic-ink: var(--graphic-ink);
   --color-graphic-paper: var(--graphic-paper);
   --color-graphic-night: var(--graphic-night);
+  --color-graphic-black: var(--graphic-black);
 }
 
 :root {
@@ -119,6 +120,7 @@
   --graphic-ink: oklch(1 0 0);
   --graphic-paper: oklch(0.985 0.003 250);
   --graphic-night: oklch(0.2 0.06 280);
+  --graphic-black: oklch(0.17 0 0);
 
   --chart-1: oklch(0.6 0.22 27);
   --chart-2: oklch(0.72 0.17 150);
