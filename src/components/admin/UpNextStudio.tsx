@@ -50,7 +50,7 @@ export function UpNextStudio({ config, vars, onChange, onUpload, onPlay, enabled
               <button
                 key={x.id}
                 type="button"
-                onClick={() => set({ design: x.id, color: undefined, color2: undefined }, true)}
+                onClick={() => set({ design: x.id, color: undefined, color2: undefined, ...((config.size ?? 30) < 40 ? { size: 40 } : {}) }, true)}
                 className={cn("group overflow-hidden rounded-sm border text-left transition", d.id === x.id ? "border-program ring-1 ring-program" : "border-border hover:border-ring")}
               >
                 <div className="relative aspect-video overflow-hidden bg-inset" style={{ containerType: "inline-size" }}>

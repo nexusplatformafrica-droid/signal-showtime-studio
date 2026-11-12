@@ -31,7 +31,7 @@ const DESIGNS: Record<string, (p: DesignProps) => ReactNode> = {
       </div>
       {img && <div className="absolute bottom-0 left-[29%] h-[135%] w-[36%]"><Photo src={img} c1={c1} c2={c2} contain /></div>}
       <div className={cn("absolute inset-y-0 left-0 flex items-center px-[0.5em]", img ? "w-[30%]" : "w-[60%]")}>
-        <P className="mmx-italic line-clamp-3 text-[0.8em] uppercase">{t.title}</P>
+        <P className="mmx-italic line-clamp-3 text-[0.68em] uppercase [overflow-wrap:anywhere]">{t.title}</P>
       </div>
       <div className="absolute inset-y-0 right-0 flex w-[36%] flex-col items-center justify-center px-[0.3em] text-center">
         <P i={1} className="text-[1.35em] font-black uppercase leading-none">{t.kicker}</P>
