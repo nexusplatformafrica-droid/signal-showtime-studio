@@ -1,2 +1,0 @@
-ALTER TABLE public.media_assets ADD COLUMN IF NOT EXISTS source_url text;
-COMMENT ON COLUMN public.media_assets.source_url IS 'Link pasted by staff for a file that already lives in R2 (or another https host). When set, the library never deletes the underlying file.';

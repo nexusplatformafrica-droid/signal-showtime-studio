@@ -1,34 +1,5 @@
 {
   "version": "7",
   "dialect": "postgresql",
-  "entries": [
-    {
-      "idx": 0,
-      "version": "7",
-      "when": 1794474553455,
-      "tag": "0000_restore_remix_runtime_pieces",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1794476608727,
-      "tag": "0001_wowza_stream_destination",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1794480837297,
-      "tag": "0002_media_source_url",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1794482646779,
-      "tag": "0003_graphics_published_state",
-      "breakpoints": true
-    }
-  ]
+  "entries": []
 }
