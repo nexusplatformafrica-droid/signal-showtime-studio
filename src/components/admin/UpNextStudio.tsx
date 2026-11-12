@@ -16,7 +16,7 @@ interface Props {
   onEnable: () => void;
 }
 
-function Step({ n, title, hint, children, className }: { n: number; title: string; hint?: string; children: React.ReactNode; className?: string }) {
+export function Step({ n, title, hint, children, className }: { n: number; title: string; hint?: string; children: React.ReactNode; className?: string }) {
   return (
     <div className={cn("space-y-2 rounded-sm border border-border bg-inset/40 p-3", className)}>
       <div>

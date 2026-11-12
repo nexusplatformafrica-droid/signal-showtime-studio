@@ -12,6 +12,7 @@ import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { StatusChip } from "@/components/broadcast/status";
 import { GraphicsLayer, type GraphicsReplay } from "@/components/broadcast/GraphicsLayer";
 import { UpNextStudio } from "@/components/admin/UpNextStudio";
+import { NewsStudio } from "@/components/admin/NewsStudio";
 import { useWebPlayout } from "@/hooks/use-web-playout";
 import { nextWebEntry } from "@/lib/web-playout";
 import type { LiveOverlay, OverlayConfig } from "@/lib/graphics";
@@ -37,6 +38,7 @@ function GraphicsPage() {
   const [replay, setReplay] = useState<GraphicsReplay | null>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const studioNow = useNow(15_000);
+  const studioClock = useNow(active_is_news_tick());
   const { web } = useWebPlayout(null);
 
   const overlays = useQuery({
@@ -132,19 +134,14 @@ function GraphicsPage() {
               <label className="block space-y-1"><span className="label-caps">Position</span><select className="field" value={activeCfg.position ?? "top-right"} onChange={(e) => setCfg({ position: e.target.value })}>{POSITIONS.map((p) => <option key={p}>{p}</option>)}</select></label>
               <label className="block space-y-1"><span className="label-caps">Size · {activeCfg.size ?? 20}% of width</span><input type="range" min={4} max={100} value={activeCfg.size ?? 20} onChange={(e) => setCfg({ size: +e.target.value })} className="w-full accent-program" /></label>
               <label className="block space-y-1"><span className="label-caps">Opacity · {Math.round((activeCfg.opacity ?? 1) * 100)}%</span><input type="range" min={0.1} max={1} step={0.05} value={activeCfg.opacity ?? 1} onChange={(e) => setCfg({ opacity: +e.target.value })} className="w-full accent-program" /></label>
+              {active.kind === "lower_third" && <p className="rounded-sm border border-border bg-inset p-2 text-xs text-muted-foreground">News design, headlines, logo, transitions and timing are in the <b className="text-foreground">news branding studio</b> below.</p>}
               {active.kind === "next_programme" && <p className="rounded-sm border border-border bg-inset p-2 text-xs text-muted-foreground">Design, text, picture, transitions and timing are in the <b className="text-foreground">branding studio</b> below.</p>}
-              {active.kind !== "clock" && active.kind !== "logo" && active.kind !== "next_programme" && <label className="block space-y-1"><span className="label-caps">Accent colour</span><input type="color" className="h-8 w-full rounded-sm border border-input bg-inset" value={activeCfg.color ?? "#e5322d"} onChange={(e) => setCfg({ color: e.target.value })} /></label>}
+              {active.kind !== "clock" && active.kind !== "logo" && active.kind !== "next_programme" && active.kind !== "lower_third" && <label className="block space-y-1"><span className="label-caps">Accent colour</span><input type="color" className="h-8 w-full rounded-sm border border-input bg-inset" value={activeCfg.color ?? "#e5322d"} onChange={(e) => setCfg({ color: e.target.value })} /></label>}
               {["ticker", "breaking_news", "on_air", "ad_banner", "station_id", "programme_title", "logo"].includes(active.kind) && (
                 <label className="block space-y-1"><span className="label-caps">{active.kind === "ticker" ? "Ticker text" : "Text"}</span><textarea className="field" rows={active.kind === "ticker" ? 3 : 1} value={activeCfg.text ?? ""} onChange={(e) => setCfg({ text: e.target.value })} maxLength={500} /></label>
               )}
               {active.kind === "ticker" && <label className="block space-y-1"><span className="label-caps">Speed · {activeCfg.speed ?? 60} px/s</span><input type="range" min={20} max={200} value={activeCfg.speed ?? 60} onChange={(e) => setCfg({ speed: +e.target.value })} className="w-full accent-program" /></label>}
-              {active.kind === "lower_third" && (
-                <>
-                  <label className="block space-y-1"><span className="label-caps">Title line</span><input className="field" value={activeCfg.title ?? ""} onChange={(e) => setCfg({ title: e.target.value })} maxLength={80} /></label>
-                  <label className="block space-y-1"><span className="label-caps">Subtitle line</span><input className="field" value={activeCfg.subtitle ?? ""} onChange={(e) => setCfg({ subtitle: e.target.value })} maxLength={120} /></label>
-                </>
-              )}
-              {["now_showing", "lower_third", "station_id", "programme_title", "ad_banner"].includes(active.kind) && (
+              {["now_showing", "station_id", "programme_title", "ad_banner"].includes(active.kind) && (
                 <label className="block space-y-1"><span className="label-caps">Display duration (seconds, 0 = always)</span><input type="number" min={0} max={3600} className="field" value={activeCfg.duration ?? 0} onChange={(e) => setCfg({ duration: Math.max(0, +e.target.value) })} /></label>
               )}
               {active.kind === "logo" && (
@@ -166,6 +163,20 @@ function GraphicsPage() {
               const next = studioNow != null ? nextWebEntry(web?.bundle, studioNow) : null;
               return { title: next?.title ?? "Next programme", startsAt: next ? Date.parse(next.starts_at) : (studioNow ?? 0) + 20 * 60_000, now: studioNow ?? 0, timezone: channel.timezone };
             })()}
+            onChange={setCfg}
+            onUpload={(f) => uploadImage(f, "image_url")}
+            onPlay={playTransition}
+            enabled={!!enabled[active.id]}
+            onEnable={() => { setEnabled((e) => ({ ...e, [active.id]: true })); setTimeout(playTransition, 50); }}
+          />
+        </fieldset>
+      )}
+      {active?.kind === "lower_third" && (
+        <fieldset disabled={!canEdit} className="px-3 pb-3">
+          <NewsStudio
+            config={activeCfg}
+            now={studioClock ?? 0}
+            timezone={channel.timezone}
             onChange={setCfg}
             onUpload={(f) => uploadImage(f, "image_url")}
             onPlay={playTransition}

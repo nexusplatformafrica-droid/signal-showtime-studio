@@ -160,13 +160,14 @@ const DESIGNS: Record<string, (p: DP) => ReactNode> = {
     </div>
   ),
   "blue-circle": ({ t, img, c1, c2 }) => (
-    <div className="relative ml-[1.2em] flex h-[1.9em] items-center overflow-hidden rounded-full pl-[2em] pr-[1em] shadow-lg" style={{ background: `linear-gradient(90deg, ${c1}, ${c2})` }}>
-      {[3.4, 4.6, 5.8].map((s) => <span key={s} className="absolute left-[0.2em] top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-[0.18em] border-graphic-ink/15" style={{ width: `${s}em`, height: `${s}em` }} />)}
-      <div className="min-w-0 flex-1 text-center">
-        <P className="text-[0.38em] font-bold uppercase tracking-[0.3em] opacity-85">{t.kicker}</P>
-        <Headline t={t} className="text-[0.85em]" />
+    <div className="relative pl-[1.2em]">
+      <div className="relative flex h-[1.9em] items-center overflow-hidden rounded-full pl-[1.6em] pr-[1em] shadow-lg" style={{ background: `linear-gradient(90deg, ${c1}, ${c2})` }}>
+        {[3.4, 4.6, 5.8].map((s) => <span key={s} className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-[0.18em] border-graphic-ink/15" style={{ width: `${s}em`, height: `${s}em` }} />)}
+        <div className="min-w-0 flex-1 text-center">
+          <P className="text-[0.38em] font-bold uppercase tracking-[0.3em] opacity-85">{t.kicker}</P>
+          <Headline t={t} className="text-[0.85em]" />
+        </div>
       </div>
-      <span className="sr-only" />
       <BadgeCircle t={t} img={img} c1={c1} />
     </div>
   ),
@@ -222,7 +223,7 @@ function BadgeCircle({ t, img, c1 }: { t: NewsText; img?: string | undefined; c1
     <Badge
       t={t.badge ? t : { ...t, badge: "NEWS" }}
       img={img}
-      className="absolute left-[-1.05em] top-1/2 size-[2.3em] -translate-y-1/2 rounded-full bg-graphic-paper text-[0.62em] shadow-md"
+      className="absolute left-0 top-1/2 size-[3.7em] -translate-y-1/2 rounded-full bg-graphic-paper text-[0.62em] shadow-md"
       style={{ color: c1 }}
     />
   );
