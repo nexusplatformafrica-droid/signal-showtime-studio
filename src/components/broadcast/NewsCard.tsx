@@ -5,7 +5,7 @@ import { tickerSeconds, type OverlayConfig } from "@/lib/graphics";
 import { cn } from "@/lib/utils";
 
 /** One piece of text that arrives just after the bar (staggered by `i`). */
-function P({ i = 0, className, style, children }: { i?: number; className?: string; style?: CSSProperties; children: ReactNode }) {
+function P({ i = 0, className, style, children }: { i?: number; className?: string | undefined; style?: CSSProperties | undefined; children: ReactNode }) {
   return <div className={cn("mmx-part", className)} style={{ ["--i" as string]: i, ...style }}>{children}</div>;
 }
 
