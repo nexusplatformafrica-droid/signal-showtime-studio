@@ -43,7 +43,7 @@ export interface NewsTemplate {
   subtitle: string;
 }
 
-/** {clock} = current time, {date} = today's date — both in the channel timezone. */
+/** {clock} = current time, {date} = today's date, {day} = day of the month — all in the channel timezone. */
 export const NEWS_TEMPLATES: NewsTemplate[] = [
   { id: "breaking", name: "Breaking news", kicker: "BREAKING NEWS", badge: "", subtitle: "" },
   { id: "live", name: "Live", kicker: "LIVE", badge: "LIVE", subtitle: "" },
@@ -89,6 +89,7 @@ export function fillNewsText(s: string | undefined, now: number, tz: string): st
   if (!s) return "";
   return s
     .replace(/\{clock\}/gi, newsClock(now, tz))
+    .replace(/\{day\}/gi, new Intl.DateTimeFormat("en-GB", { timeZone: tz, day: "numeric" }).format(now))
     .replace(/\{date\}/gi, new Intl.DateTimeFormat("en-GB", { timeZone: tz, weekday: "short", day: "numeric", month: "short" }).format(now).toUpperCase())
     .trim();
 }
