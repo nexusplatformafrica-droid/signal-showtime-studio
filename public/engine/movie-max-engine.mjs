@@ -104,7 +104,7 @@ async function main() {
   const event = (event_type, message, extra = {}) => call("/events", { method: "POST", body: JSON.stringify({ events: [{ event_type, message: String(message).slice(0, 500), severity: extra.severity ?? "info", entry_id: extra.entry_id ?? null, media_id: extra.media_id ?? null }] }) }).catch(() => undefined);
 
   let config = null, schedule = { entries: [], playlists: [], media: [] };
-  let proc = null, running = null, stopping = false, lastProgress = 0, stats = {};
+  let proc = null, running = null, lastProgress = 0, stats = {};
   let skippedKey = null, mode = "schedule", lastError = null;
 
   async function loadConfig() { config = await call("/config"); }
@@ -112,8 +112,8 @@ async function main() {
 
   function stopFfmpeg() {
     if (!proc) return;
-    stopping = true;
     const p = proc;
+    p.mmxStopped = true;
     p.kill("SIGTERM");
     setTimeout(() => { try { p.kill("SIGKILL"); } catch {} }, 3000);
     proc = null;
@@ -124,7 +124,7 @@ async function main() {
     if (!out) { lastError = "No streaming destination configured (Streaming Endpoints)."; return; }
     const ch = config.channel ?? {};
     const args = ffmpegArgs({ input: target.url, offset: target.offset, loop: target.loop, out, resolution: ch.output_resolution === "1080p" ? "1920x1080" : ch.output_resolution === "720p" ? "1280x720" : ch.output_resolution, fps: ch.output_fps, vKbps: ch.video_bitrate_kbps, aKbps: ch.audio_bitrate_kbps });
-    stopping = false;
+    target.startedAt = Date.now();
     lastProgress = 0;
     const p = spawn(FFMPEG, args, { stdio: ["ignore", "pipe", "pipe"] });
     proc = p;
@@ -142,13 +142,14 @@ async function main() {
     p.stderr.on("data", (buf) => { errText = (errText + buf).slice(-400); });
     p.on("error", (e) => { lastError = e.code === "ENOENT" ? "FFmpeg is not installed or not on PATH." : e.message; log("ffmpeg error:", lastError); });
     p.on("exit", (code) => {
-      if (proc === p) proc = null;
-      if (!stopping && code !== 0) {
+      const current = proc === p;
+      if (current) proc = null;
+      if (!p.mmxStopped && code !== 0) {
         lastError = `FFmpeg stopped (code ${code}): ${errText.trim().split("\n").pop() ?? ""}`.slice(0, 480);
         log(lastError);
         event("encoder_error", lastError, { severity: "error", entry_id: target.entryId, media_id: target.mediaId });
       }
-      if (proc === null) running = null;
+      if (current) running = null;
     });
     log(`▶ ${target.label}${target.offset > 1 ? ` (from ${Math.round(target.offset)}s)` : ""}`);
   }
@@ -209,8 +210,6 @@ async function main() {
   await safe("schedule", loadSchedule)();
   if (config?.destination) log(`Pushing to ${config.destination.rtmp_url}/${config.destination.stream_name}`);
   event("engine_restarted", `Engine ${VERSION} started on ${HOST}`);
-  const origStart = startFfmpeg;
-  startFfmpeg = (t) => { t.startedAt = Date.now(); origStart(t); };
   tick();
   setInterval(tick, 2000);
   setInterval(safe("heartbeat", heartbeat), 5000);
