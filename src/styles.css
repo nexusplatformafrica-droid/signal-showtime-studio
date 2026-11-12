@@ -286,3 +286,21 @@
 .animate-ticker {
   animation: ticker-scroll var(--ticker-duration, 20s) linear infinite;
 }
+
+/* Google sign-in button — Google brand guideline colours (dark theme) */
+.google-btn {
+  display: flex;
+  height: 2.5rem;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 12px;
+  border-radius: var(--radius);
+  border: 1px solid #8e918f;
+  background: #131314;
+  color: #e3e3e3;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+}
