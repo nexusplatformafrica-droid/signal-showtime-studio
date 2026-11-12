@@ -20,7 +20,7 @@ Base URL: `https://<your-site>/api/public/engine/v1`
 | GET | `/commands` | Claims queued operator commands (each delivered once; commands older than 2 min expire) |
 | POST | `/commands/{id}/result` | `{ status: "completed" \| "failed", result? }` |
 | POST | `/ingest/auth` | Stream-key check for publish hooks: `{ stream_key }` or MediaMTX `{ action, password/name }` → 200 / 401 |
-| GET | `/media/{id}/url` | Fresh signed media URL |
+| GET | `/media/{id}/url` | Fresh media URL: signed for files in the connected R2 bucket, or the pasted public link (`source_url`) for linked files |
 
 ### Heartbeat body
 ```json

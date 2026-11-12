@@ -8,6 +8,7 @@
 
 ## Open
 - [ ] Connect Cloudflare R2 (needs R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET from the user)
+- [x] Add media by pasting an R2 link (public or connected-bucket)
 - [x] Wowza connected as streaming provider (destination + secure relay link saved)
 - [ ] Deploy the playout engine server pushing to Wowza, then verify the public HLS link (user infrastructure)
 - [ ] Phase 2: Advertisement campaigns & commercial breaks manager
