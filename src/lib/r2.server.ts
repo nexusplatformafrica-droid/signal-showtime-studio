@@ -10,7 +10,7 @@ export function getR2() {
   const client = new AwsClient({ accessKeyId, secretAccessKey, service: "s3", region: "auto" });
   const base = `https://${accountId}.r2.cloudflarestorage.com/${bucket}`;
   const objectUrl = (key: string) => `${base}/${key.split("/").map(encodeURIComponent).join("/")}`;
-  return { client, bucket, base, objectUrl };
+  return { client, accountId, bucket, base, objectUrl };
 }
 
 export function requireR2() {
