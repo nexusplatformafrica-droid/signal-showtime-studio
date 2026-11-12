@@ -34,8 +34,17 @@ function Badge({ t, img, className, style }: { t: NewsText; img?: string | undef
   );
 }
 
+/** Long headlines shrink to stay on one line, like a real news bar. */
+export function headlineScale(len: number) {
+  return len <= 30 ? 1 : len <= 40 ? 0.84 : len <= 52 ? 0.7 : 0.6;
+}
+
 function Headline({ t, className, style }: { t: NewsText; className?: string; style?: CSSProperties }) {
-  return <P key={t.index} i={1} className={cn("min-w-0 truncate font-black uppercase leading-tight", className)} style={style}>{t.headline}</P>;
+  return (
+    <div className={cn("min-w-0 max-w-full", className)} style={style}>
+      <P key={t.index} i={1} className="truncate font-black uppercase leading-tight" style={{ fontSize: `${headlineScale(t.headline.length)}em` }}>{t.headline}</P>
+    </div>
+  );
 }
 
 /** Description line; can scroll like a ticker for long text. */
@@ -103,7 +112,7 @@ const DESIGNS: Record<string, (p: DP) => ReactNode> = {
         <Badge t={t} img={img} className="h-full w-[17%] text-[0.6em]" />
         <span className="absolute inset-y-[15%] left-[17%] w-[0.18em] bg-graphic-ink" />
         {["62%", "38%", "50%"].map((w, i) => <span key={i} className="absolute left-[17.5%] h-[0.12em] rounded-full bg-graphic-ink" style={{ top: `${30 + i * 20}%`, width: `calc(${w} * 0.12)` }} />)}
-        <div className="min-w-0 flex-1 pl-[1.4em] pr-[0.8em]"><Headline t={t} className="text-[0.95em] [text-shadow:0_0.06em_0.12em_rgb(0_0_0/0.35)]" /></div>
+        <div className="min-w-0 flex-1 pl-[2em] pr-[0.8em]"><Headline t={t} className="text-[0.95em] [text-shadow:0_0.06em_0.12em_rgb(0_0_0/0.35)]" /></div>
         <span className="absolute bottom-[0.22em] right-[0.5em] h-[0.1em] w-[28%] rounded-full bg-graphic-ink" />
       </div>
       <Sub t={t} scroll={scroll} className="ml-[38%] w-[44%] px-[0.6em] py-[0.12em] text-[0.48em]" style={{ background: c2 }} />
@@ -187,7 +196,7 @@ const DESIGNS: Record<string, (p: DP) => ReactNode> = {
     <div className="drop-shadow-lg">
       <div className="flex h-[1.7em] items-center overflow-hidden rounded-l-[0.3em] rounded-r-full" style={{ background: `linear-gradient(90deg, ${c1}, ${light(c1, 70)})` }}>
         <div className="flex h-full w-[26%] items-center px-[0.6em]" style={{ background: light(c1, 80), clipPath: slantR }}>
-          <P className="mmx-italic whitespace-nowrap text-[0.75em] uppercase">{t.badge.replace(/\\n|\n/g, " ") || t.kicker}</P>
+          <P className="mmx-italic whitespace-nowrap text-[0.75em] uppercase">{t.badge.replace(/\\n|\n/g, " ") || "NEWS"}</P>
         </div>
         <div className="min-w-0 flex-1 px-[0.8em] text-center"><Headline t={t} className="text-[0.82em]" /></div>
       </div>
@@ -207,7 +216,7 @@ const DESIGNS: Record<string, (p: DP) => ReactNode> = {
   "blue-tv": ({ t, img, c1, c2, scroll }) => (
     <div className="drop-shadow-lg">
       <div className="flex items-end">
-        <Badge t={t.badge ? t : { ...t, badge: "TV\nNEWS" }} img={img} className="h-[2.1em] w-[16%] rounded-t-[0.35em] text-[0.7em]" style={{ background: `linear-gradient(180deg, ${light(c1, 75)}, ${c1})` }} />
+        <Badge t={t.badge ? t : { ...t, badge: "TV\nNEWS" }} img={img} className="h-[3em] w-[16%] rounded-t-[0.35em] text-[0.7em]" style={{ background: `linear-gradient(180deg, ${light(c1, 75)}, ${c1})` }} />
         <div className="relative flex h-[1.5em] min-w-0 flex-1 items-center overflow-hidden px-[0.9em]" style={{ background: `linear-gradient(90deg, ${dark(c1, 70)}, ${c1})`, clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%)" }}>
           <span className="absolute -top-[0.2em] left-[3%] h-[0.5em] w-[30%] rounded-b-[0.3em]" style={{ background: light(c1, 70) }} />
           <Headline t={t} className="relative text-[0.85em]" />
