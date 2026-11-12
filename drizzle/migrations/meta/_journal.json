@@ -8,6 +8,13 @@
       "when": 1794491072031,
       "tag": "0000_restore_remix_runtime_pieces",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794493666486,
+      "tag": "0001_add_popup_card_overlay",
+      "breakpoints": true
     }
   ]
 }
