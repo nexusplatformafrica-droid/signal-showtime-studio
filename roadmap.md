@@ -13,6 +13,8 @@
 - [x] Downloadable playout engine (public/engine/movie-max-engine.mjs) + setup guide in Settings → Playout engine
 - [x] Website plays the published schedule itself (LIVE, in sync for all viewers) — no extra server needed for the website
 - [x] Real on-screen graphics (published state only) on website + /output page; OBS → Wowza guide in Streaming Endpoints
+- [x] Up next branding studio: 16 designs, text templates, own picture, colours, appear/disappear transitions, timing, live preview
+- [ ] News branding cards (waiting for the user's news design references)
 - [ ] Send /output to Wowza with OBS on an always-on computer (needs user's computer + Wowza Live Broadcast password)
 - [ ] Optional: run the engine on a 24/7 server with the Wowza live password, then verify the Wowza link for apps/TV boxes (needs user's server + Wowza password; site must be published)
 - [ ] Phase 2: Advertisement campaigns & commercial breaks manager
