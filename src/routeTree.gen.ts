@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
+import { Route as AuthenticatedAdminControlRouteImport } from './routes/_authenticated/admin/control'
 import { Route as ApiPublicThumbnailsSplatRouteImport } from './routes/api/public/thumbnails/$'
 import { Route as ApiPublicEngineV1SplatRouteImport } from './routes/api/public/engine/v1/$'
 
@@ -47,6 +48,12 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedAdminRouteRoute,
 } as any)
+const AuthenticatedAdminControlRoute =
+  AuthenticatedAdminControlRouteImport.update({
+    id: '/control',
+    path: '/control',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
 const ApiPublicThumbnailsSplatRoute =
   ApiPublicThumbnailsSplatRouteImport.update({
     id: '/api/public/thumbnails/$',
@@ -64,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
+  '/admin/control': typeof AuthenticatedAdminControlRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/thumbnails/$': typeof ApiPublicThumbnailsSplatRoute
   '/api/public/engine/v1/$': typeof ApiPublicEngineV1SplatRoute
@@ -72,6 +80,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/admin/control': typeof AuthenticatedAdminControlRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/api/public/thumbnails/$': typeof ApiPublicThumbnailsSplatRoute
   '/api/public/engine/v1/$': typeof ApiPublicEngineV1SplatRoute
@@ -83,6 +92,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
+  '/_authenticated/admin/control': typeof AuthenticatedAdminControlRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/thumbnails/$': typeof ApiPublicThumbnailsSplatRoute
   '/api/public/engine/v1/$': typeof ApiPublicEngineV1SplatRoute
@@ -94,6 +104,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/admin'
+    | '/admin/control'
     | '/admin/'
     | '/api/public/thumbnails/$'
     | '/api/public/engine/v1/$'
@@ -102,6 +113,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reset-password'
+    | '/admin/control'
     | '/admin'
     | '/api/public/thumbnails/$'
     | '/api/public/engine/v1/$'
@@ -112,6 +124,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/_authenticated/admin'
+    | '/_authenticated/admin/control'
     | '/_authenticated/admin/'
     | '/api/public/thumbnails/$'
     | '/api/public/engine/v1/$'
@@ -170,6 +183,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/_authenticated/admin/control': {
+      id: '/_authenticated/admin/control'
+      path: '/control'
+      fullPath: '/admin/control'
+      preLoaderRoute: typeof AuthenticatedAdminControlRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
     '/api/public/thumbnails/$': {
       id: '/api/public/thumbnails/$'
       path: '/api/public/thumbnails/$'
@@ -188,11 +208,13 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedAdminRouteRouteChildren {
+  AuthenticatedAdminControlRoute: typeof AuthenticatedAdminControlRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
 
 const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren =
   {
+    AuthenticatedAdminControlRoute: AuthenticatedAdminControlRoute,
     AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   }
 
