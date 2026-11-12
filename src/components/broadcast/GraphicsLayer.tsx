@@ -1,5 +1,3 @@
-import { Wordmark } from "@/components/brand/Wordmark";
-import { formatClock } from "@/lib/broadcast";
 import { isOverlayVisible, overlayRemainingMs, type GraphicsContext, type LiveOverlay } from "@/lib/graphics";
 import { cardPhase, cardTextFor, type CardPhase } from "@/lib/brand-cards";
 import { BrandCard } from "@/components/broadcast/BrandCard";
@@ -9,6 +7,8 @@ import { BreakingCard } from "@/components/broadcast/BreakingCard";
 import { PopupCard } from "@/components/broadcast/PopupCard";
 import { newsTextFor } from "@/lib/news-cards";
 import { KIT_DEFAULTS, kitTextFor, type KitKind } from "@/lib/card-kits";
+import { ClockCard, LogoMark, NowShowingCard, OnAirCard } from "@/components/broadcast/BadgeCards";
+import { BADGE_DEFAULTS, clockParts, nowShowingText } from "@/lib/badge-kits";
 import { cn } from "@/lib/utils";
 
 const pos = (p?: string) => {
@@ -52,7 +52,6 @@ export function GraphicsLayer({ overlays, ctx, timezone, className, replay }: { 
         <div key={position} className={cn("absolute flex gap-[0.8cqw]", position.startsWith("top") ? "items-start" : "flex-col-reverse items-start", position.endsWith("right") && "flex-row-reverse", pos(position))}>
       {items.map((o) => {
         const c = o.config;
-        const accent = { backgroundColor: c.color ?? "var(--tally-program)" };
         if (o.kind === "next_programme") {
           const rp = replay?.id === o.id ? replay : null;
           const phase = rp ? rp.phase : cardPhase(overlayRemainingMs(o, ctx), Number(c.transition_ms) || 700);
@@ -65,18 +64,18 @@ export function GraphicsLayer({ overlays, ctx, timezone, className, replay }: { 
           const phase = rp ? rp.phase : cardPhase(overlayRemainingMs(o, ctx), Number(c.transition_ms) || 700);
           return <div key={`${o.id}:${rp?.key ?? ""}`} style={{ opacity: c.opacity ?? 1 }}><NewsCard config={c} text={newsTextFor(c, ctx.now, timezone)} phase={phase} /></div>;
         }
-        const style: React.CSSProperties = { opacity: c.opacity ?? 1, width: BARS.has(o.kind) ? "94cqw" : o.kind === "logo" ? `${c.size ?? 8}cqw` : undefined, maxWidth: `${Math.max(c.size ?? 30, 30)}cqw` };
+        const rp = replay?.id === o.id ? replay : null;
+        const key = `${o.id}:${rp?.key ?? ""}`;
+        const style = { opacity: c.opacity ?? 1 };
+        if (o.kind === "now_showing" || o.kind === "programme_title") {
+          const phase = rp ? rp.phase : cardPhase(overlayRemainingMs(o, ctx), Number(c.transition_ms) || 700);
+          return <div key={key} style={style}><NowShowingCard config={c} text={nowShowingText(c, ctx.title, ctx.now, timezone)} phase={phase} /></div>;
+        }
+        if (o.kind === "clock") return <div key={key} style={style}><ClockCard config={c} parts={clockParts(ctx.now, timezone, { h12: c.h12, seconds: c.seconds })} label={c.kicker ?? BADGE_DEFAULTS.clock.kicker} phase={rp?.phase} /></div>;
+        if (o.kind === "on_air" || o.kind === "live_indicator") return <div key={key} style={style}><OnAirCard config={o.kind === "live_indicator" && !c.text ? { ...c, text: "LIVE" } : c} phase={rp?.phase} /></div>;
+        if (o.kind === "logo") return <div key={key} style={style}><LogoMark config={c} phase={rp?.phase} /></div>;
         return (
-          <div key={o.id} style={style}>
-            {o.kind === "logo" && (c.logo_url ? <img src={c.logo_url} alt="" className="w-full" /> : <Wordmark className="text-[clamp(8px,2.2cqw,48px)]" />)}
-            {(o.kind === "on_air" || o.kind === "live_indicator") && <span className="inline-block whitespace-nowrap rounded-sm px-[0.6em] py-[0.2em] font-bold uppercase tracking-widest text-program-foreground" style={{ ...accent, ...fs }}>{c.text || (o.kind === "on_air" ? "On Air" : "Live")}</span>}
-            {o.kind === "clock" && <span className="timecode inline-block whitespace-nowrap rounded-sm bg-inset/80 px-[0.5em] py-[0.15em] font-semibold" style={fs}>{formatClock(ctx.now, timezone).slice(0, 5)}</span>}
-            {(o.kind === "now_showing" || o.kind === "programme_title") && (
-              <div className="animate-in fade-in slide-in-from-left-4 bg-inset/90" style={fs}>
-                <div className="px-[0.6em] py-[0.2em] text-[0.7em] font-bold uppercase tracking-widest text-program-foreground" style={accent}>Now showing</div>
-                <div className="max-w-[40cqw] truncate px-[0.6em] py-[0.3em] font-semibold">{ctx.title}</div>
-              </div>
-            )}
+          <div key={o.id} style={{ ...style, maxWidth: `${Math.max(c.size ?? 30, 30)}cqw` }}>
             {(o.kind === "station_id" || o.kind === "countdown") && <span className="inline-block bg-inset/90 px-[0.6em] py-[0.3em] font-semibold" style={fs}>{c.text || o.name}</span>}
           </div>
         );

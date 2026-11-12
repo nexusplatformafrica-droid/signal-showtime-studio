@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Radio, Square, Upload } from "lucide-react";
+import { Radio, Square } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json, Tables, TablesUpdate } from "@/integrations/supabase/types";
 import { useStation } from "@/components/admin/station-context";
@@ -14,8 +14,10 @@ import { GraphicsLayer, type GraphicsReplay } from "@/components/broadcast/Graph
 import { UpNextStudio } from "@/components/admin/UpNextStudio";
 import { NewsStudio } from "@/components/admin/NewsStudio";
 import { KitStudio } from "@/components/admin/KitStudio";
+import { BadgeStudio } from "@/components/admin/BadgeStudio";
+import type { BadgeKind } from "@/lib/badge-kits";
 import { useWebPlayout } from "@/hooks/use-web-playout";
-import { nextWebEntry } from "@/lib/web-playout";
+import { nextWebEntry, pickWebProgramme } from "@/lib/web-playout";
 import { OPERATOR_TIMED, asConfig, isOverlayVisible, publishPatch, showNowPatch, takeOffPatch, type LiveOverlay, type OverlayConfig, type OverlayKind } from "@/lib/graphics";
 import type { KitKind } from "@/lib/card-kits";
 import { Button } from "@/components/ui/button";
@@ -30,7 +32,8 @@ type Overlay = Tables<"graphics_overlays">;
 type OverlayUpdate = TablesUpdate<"graphics_overlays">;
 const POSITIONS = ["top-left", "top-center", "top-right", "bottom-left", "bottom-center", "bottom-right", "bottom"];
 const KIT = new Set(["ticker", "breaking_news", "ad_banner"]);
-const STUDIO = new Set(["ticker", "breaking_news", "ad_banner", "lower_third", "next_programme"]);
+const BADGE = new Set(["now_showing", "clock", "on_air", "logo"]);
+const STUDIO = new Set(["ticker", "breaking_news", "ad_banner", "lower_third", "next_programme", ...BADGE]);
 const cfg = (o: Overlay): OverlayConfig => (o.config && typeof o.config === "object" && !Array.isArray(o.config) ? (o.config as OverlayConfig) : {});
 
 function GraphicsPage() {
@@ -166,19 +169,13 @@ function GraphicsPage() {
               <label className="block space-y-1"><span className="label-caps">Opacity · {Math.round((activeCfg.opacity ?? 1) * 100)}%</span><input type="range" min={0.1} max={1} step={0.05} value={activeCfg.opacity ?? 1} onChange={(e) => setCfg({ opacity: +e.target.value })} className="w-full accent-program" /></label>
               {active.kind === "lower_third" && <p className="rounded-sm border border-border bg-inset p-2 text-xs text-muted-foreground">News design, headlines, logo, transitions and timing are in the <b className="text-foreground">news branding studio</b> below.</p>}
               {active.kind === "next_programme" && <p className="rounded-sm border border-border bg-inset p-2 text-xs text-muted-foreground">Design, text, picture, transitions and timing are in the <b className="text-foreground">branding studio</b> below.</p>}
-              {KIT.has(active.kind) && <p className="rounded-sm border border-border bg-inset p-2 text-xs text-muted-foreground">Design, wording, logo, transitions and timing are in the <b className="text-foreground">branding studio</b> below.</p>}
+              {(KIT.has(active.kind) || BADGE.has(active.kind)) && <p className="rounded-sm border border-border bg-inset p-2 text-xs text-muted-foreground">Design, wording, logo, transitions and timing are in the <b className="text-foreground">branding studio</b> below.</p>}
               {!STUDIO.has(active.kind) && active.kind !== "clock" && active.kind !== "logo" && <label className="block space-y-1"><span className="label-caps">Accent colour</span><input type="color" className="h-8 w-full rounded-sm border border-input bg-inset" value={activeCfg.color ?? "#e5322d"} onChange={(e) => setCfg({ color: e.target.value })} /></label>}
-              {["on_air", "station_id", "programme_title", "logo"].includes(active.kind) && (
+              {["station_id", "programme_title"].includes(active.kind) && (
                 <label className="block space-y-1"><span className="label-caps">{active.kind === "ticker" ? "Ticker text" : "Text"}</span><textarea className="field" rows={active.kind === "ticker" ? 3 : 1} value={activeCfg.text ?? ""} onChange={(e) => setCfg({ text: e.target.value })} maxLength={500} /></label>
               )}
-              {["now_showing", "station_id", "programme_title"].includes(active.kind) && (
+              {["station_id", "programme_title"].includes(active.kind) && (
                 <label className="block space-y-1"><span className="label-caps">Display duration (seconds, 0 = always)</span><input type="number" min={0} max={3600} className="field" value={activeCfg.duration ?? 0} onChange={(e) => setCfg({ duration: Math.max(0, +e.target.value) })} /></label>
-              )}
-              {active.kind === "logo" && (
-                <label className="flex h-8 cursor-pointer items-center justify-center gap-2 rounded-sm border border-dashed border-border text-xs hover:bg-accent">
-                  <Upload className="size-3.5" />Upload logo image
-                  <input type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0])} />
-                </label>
               )}
               <ScheduleWindow overlay={active} />
             </fieldset>
@@ -196,6 +193,21 @@ function GraphicsPage() {
             timezone={channel.timezone}
             onChange={setCfg}
             onUpload={(f) => uploadImage(f, "image_url")}
+            onPlay={playTransition}
+            enabled={!!enabled[active.id]}
+            onEnable={() => { setEnabled((e) => ({ ...e, [active.id]: true })); setTimeout(playTransition, 50); }}
+          />
+        </fieldset>
+      )}
+      {active && BADGE.has(active.kind) && (
+        <fieldset disabled={!canEdit} className="px-3 pb-3">
+          <BadgeStudio
+            kind={active.kind as BadgeKind}
+            config={activeCfg}
+            timezone={channel.timezone}
+            programme={(studioNow != null ? pickWebProgramme(web?.bundle, studioNow)?.title : null) ?? "Programme title"}
+            onChange={setCfg}
+            onUpload={(f, field) => uploadImage(f, field)}
             onPlay={playTransition}
             enabled={!!enabled[active.id]}
             onEnable={() => { setEnabled((e) => ({ ...e, [active.id]: true })); setTimeout(playTransition, 50); }}

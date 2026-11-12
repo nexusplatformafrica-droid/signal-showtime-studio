@@ -39,6 +39,15 @@ export interface OverlayConfig {
   tag?: string | undefined;
   icon?: string | undefined;
   sep?: string | undefined;
+  /** Logo watermark: text under / next to the logo, where it sits and how big (percent of the logo width). */
+  caption?: string | undefined;
+  caption_pos?: "below" | "right" | "left" | "above" | undefined;
+  caption_size?: number | undefined;
+  /** Clock: 12-hour format, show seconds, show the date. ON AIR: blink the dot. */
+  h12?: boolean | undefined;
+  seconds?: boolean | undefined;
+  show_date?: boolean | undefined;
+  blink?: boolean | undefined;
 }
 
 /** Graphics the operator times themselves: stay up (duration 0), once after publishing, or repeat. */
