@@ -140,3 +140,15 @@ export function kitTextFor(c: KitConfig, now: number, tz: string, defaults: { ki
 export function tickerLine(lines: string[], sep = "◆") {
   return lines.join(`   ${sep || "•"}   `);
 }
+
+export type KitKind = "ticker" | "breaking_news" | "ad_banner";
+
+/** What each kit shows before the operator types anything. */
+export const KIT_DEFAULTS: Record<KitKind, { kicker: string; line: string }> = {
+  ticker: { kicker: "LATEST NEWS", line: "Welcome to MOVIE MAX" },
+  breaking_news: { kicker: "BREAKING NEWS", line: "Your headline here" },
+  ad_banner: { kicker: "DID YOU KNOW", line: "Your message here" },
+};
+
+export const kitDesigns = (kind: KitKind) => (kind === "ticker" ? TICKER_DESIGNS : kind === "breaking_news" ? BREAKING_DESIGNS : POPUP_DESIGNS);
+export const kitTemplates = (kind: KitKind) => (kind === "ticker" ? TICKER_TEMPLATES : kind === "breaking_news" ? BREAKING_TEMPLATES : POPUP_TEMPLATES);

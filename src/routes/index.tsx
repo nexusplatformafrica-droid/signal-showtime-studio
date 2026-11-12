@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { CalendarRange, Play } from "lucide-react";
+import { CalendarRange, Play, Tv } from "lucide-react";
 import { publicStationQuery } from "@/components/public/station-query";
-import { PublicFooter, PublicHeader } from "@/components/public/PublicChrome";
+import { PublicBackdrop, PublicFooter, PublicHeader } from "@/components/public/PublicChrome";
 import { playbackUrl } from "@/lib/stream-url";
 import { LivePlayer } from "@/components/public/LivePlayer";
 import { useNow } from "@/hooks/use-station";
@@ -10,7 +10,6 @@ import { useWebPlayout } from "@/hooks/use-web-playout";
 import { CATEGORY_LABELS } from "@/lib/labels";
 import { findNowNext, formatDate, formatTime, isEngineOnline, isOnAir } from "@/lib/broadcast";
 import { Button } from "@/components/ui/button";
-import slate from "@/assets/standby-slate.jpg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -46,80 +45,105 @@ function Home() {
   const upcoming = schedule.filter((p) => now != null && +new Date(p.starts_at) > now).slice(0, 8);
   const featured = [...new Map(schedule.filter((p) => p.thumbnail_url).map((p) => [p.title, p])).values()].slice(0, 6);
 
+  const nextIn = next && now != null ? Math.max(0, Math.round((+new Date(next.starts_at) - now) / 60000)) : null;
+
   return (
-    <div className="theme-public min-h-screen bg-background text-foreground">
+    <div className="theme-public public-bg relative isolate min-h-screen overflow-x-hidden text-foreground">
+      <PublicBackdrop />
       <PublicHeader onAir={onAir} engineOnline={online} webLive={webLive} />
-      <main>
-        <section className="relative overflow-hidden border-b border-border/70">
-          <img src={slate} alt="" className="absolute inset-0 h-full w-full object-cover opacity-25" width={1920} height={1088} />
-          <div className="absolute inset-0 hero-scrim" />
-          <div className="relative mx-auto grid max-w-7xl gap-8 px-4 py-10 md:px-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:py-14">
-            <div className="monitor rounded-sm shadow-2xl" data-tally={onAir || webLive ? "program" : undefined}>
-              {ch && <LivePlayer channelId={ch.id} src={playbackUrl(ch.hls_url, ch.slug)} onAir={onAir} web={web} className="absolute inset-0" />}
-            </div>
-            <div className="flex flex-col justify-center">
-              <div className="label-caps text-gold">{onAir || webLive ? "Now on MOVIE MAX" : "MOVIE MAX"}</div>
-              <h1 className="mt-2 font-display text-4xl font-black uppercase leading-[0.95] tracking-tight md:text-5xl" style={{ fontStretch: "85%" }}>
-                {nowTitle ?? "Live TV, all day, every day"}
+      <main className="mx-auto max-w-7xl px-4 md:px-6">
+        {/* Hero bento: big glass intro card + the live screen */}
+        <section className="grid gap-5 pt-8 lg:grid-cols-12 lg:pt-12">
+          <div className="glass flex flex-col justify-between rounded-[2rem] p-7 md:p-9 lg:col-span-5">
+            <div>
+              <span className="inline-flex items-center gap-2 rounded-full bg-panel-raised px-3 py-1 text-xs font-semibold text-muted-foreground shadow-sm">
+                <span className={onAir || webLive ? "size-1.5 rounded-full bg-program animate-tally" : "size-1.5 rounded-full bg-muted-foreground/50"} />
+                {onAir || webLive ? "Now on MOVIE MAX" : "MOVIE MAX · Kampala"}
+              </span>
+              <h1 className="mt-6 font-headline text-4xl font-semibold leading-[1.05] tracking-tight md:text-5xl">
+                {nowTitle ?? "Live TV, all day, every day."}
               </h1>
-              <p className="mt-4 max-w-md text-muted-foreground">
+              <p className="mt-5 max-w-md leading-relaxed text-muted-foreground">
                 {onAir ? (confirmedCurrent?.description ?? ch?.description) : webLive ? (webCurrent?.description ?? ch?.description) : current ? `Scheduled now: ${current.title}. The channel is not broadcasting at the moment.` : ch?.description}
               </p>
-              <div className="mt-6 flex flex-wrap gap-2">
-                <Button asChild variant="brand" size="lg"><Link to="/watch"><Play />Watch live</Link></Button>
-                <Button asChild variant="panel" size="lg"><Link to="/guide"><CalendarRange />TV guide</Link></Button>
-              </div>
-              {next && (
-                <div className="mt-8 border-l-2 border-program pl-4">
-                  <div className="label-caps">Up next · {formatTime(next.starts_at, tz)}</div>
-                  <div className="mt-1 text-lg font-semibold">{next.title}</div>
-                  <div className="text-sm text-muted-foreground">{CATEGORY_LABELS[next.category]}</div>
-                </div>
-              )}
+            </div>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Button asChild variant="cream" size="pill"><Link to="/guide"><CalendarRange />TV guide</Link></Button>
+              <Button asChild variant="emerald" size="pill"><Link to="/watch"><Play />Watch live</Link></Button>
+            </div>
+          </div>
+          <div className="theme-screen relative overflow-hidden rounded-[2rem] bg-inset shadow-[var(--shadow-soft)] ring-1 ring-foreground/5 lg:col-span-7">
+            <div className="relative aspect-video w-full">
+              {ch && <LivePlayer channelId={ch.id} src={playbackUrl(ch.hls_url, ch.slug)} onAir={onAir} web={web} className="absolute inset-0" />}
             </div>
           </div>
         </section>
 
-        <section className="mx-auto max-w-7xl px-4 pt-12 md:px-6">
+        {/* Second row: up next (sun), any screen (emerald), small facts */}
+        <section className="mt-5 grid gap-5 md:grid-cols-2 lg:grid-cols-12">
+          <div className="sun-card silk flex min-h-56 flex-col justify-between rounded-[2rem] p-7 lg:col-span-4">
+            <div className="font-headline text-xs font-semibold uppercase tracking-[0.2em] opacity-75">Up next{next ? ` · ${formatTime(next.starts_at, tz)}` : ""}</div>
+            <div>
+              <div className="font-headline text-2xl font-semibold leading-tight">{next?.title ?? "More great TV is on the way"}</div>
+              <div className="mt-2 text-sm opacity-80">{next ? `${CATEGORY_LABELS[next.category]}${nextIn != null ? ` · starts in ${nextIn < 60 ? `${nextIn} min` : `${Math.round(nextIn / 60)} h`}` : ""}` : "Check the TV guide for the full week."}</div>
+            </div>
+          </div>
+          <div className="emerald-card silk relative flex min-h-56 flex-col justify-between rounded-[2rem] p-7 lg:col-span-4">
+            <div className="font-headline text-xs font-semibold uppercase tracking-[0.2em] opacity-75">Any screen</div>
+            <div className="absolute right-7 top-7 grid size-12 place-items-center rounded-full bg-panel-raised/95 text-emerald shadow-lg"><Tv className="size-5" /></div>
+            <div>
+              <div className="font-headline text-2xl font-semibold leading-tight">Phones, laptops and smart TVs.</div>
+              <div className="mt-2 text-sm opacity-80">Everyone watches the same live channel, in sync.</div>
+            </div>
+          </div>
+          <div className="grid gap-5 md:col-span-2 md:grid-cols-2 lg:col-span-4 lg:grid-cols-1">
+            <div className="glass rounded-[1.75rem] p-6">
+              <div className="font-headline text-lg font-semibold">One channel</div>
+              <p className="mt-1 text-sm text-muted-foreground">A continuous live broadcast — just like television.</p>
+            </div>
+            <div className="glass rounded-[1.75rem] p-6">
+              <div className="font-headline text-lg font-semibold">East Africa Time</div>
+              <p className="mt-1 text-sm text-muted-foreground">All programme times are shown in Kampala time (UTC+3).</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="pt-16">
           <div className="flex items-end justify-between">
-            <h2 className="font-display text-2xl font-black uppercase tracking-tight">Coming up</h2>
-            <Link to="/guide" className="text-sm text-muted-foreground hover:text-foreground">Full guide →</Link>
+            <h2 className="font-headline text-3xl font-semibold tracking-tight">Coming up</h2>
+            <Link to="/guide" className="rounded-full px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-panel-raised hover:text-foreground">Full guide →</Link>
           </div>
           {upcoming.length ? (
-            <div className="mt-5 divide-y divide-border/70 border-y border-border/70">
+            <div className="glass mt-6 grid gap-2 rounded-[2rem] p-3 md:grid-cols-2">
               {upcoming.map((p) => (
-                <div key={p.id} className="grid grid-cols-[72px_1fr] items-center gap-4 py-3 sm:grid-cols-[90px_120px_1fr]">
-                  <div className="timecode text-lg font-semibold">{formatTime(p.starts_at, tz)}</div>
-                  <div className="hidden text-xs uppercase tracking-wider text-muted-foreground sm:block">{formatDate(p.starts_at, tz, { weekday: "short", day: "numeric", month: "short" })}</div>
-                  <div className="min-w-0"><div className="truncate font-semibold">{p.title}</div><div className="text-xs text-muted-foreground">{CATEGORY_LABELS[p.category]}</div></div>
+                <div key={p.id} className="flex items-center gap-4 rounded-[1.25rem] bg-panel-raised/80 px-4 py-3 shadow-sm">
+                  <div className="timecode grid h-12 w-16 shrink-0 place-items-center rounded-2xl bg-cream text-base font-semibold">{formatTime(p.starts_at, tz)}</div>
+                  <div className="min-w-0">
+                    <div className="truncate font-semibold">{p.title}</div>
+                    <div className="text-xs text-muted-foreground">{formatDate(p.starts_at, tz, { weekday: "short", day: "numeric", month: "short" })} · {CATEGORY_LABELS[p.category]}</div>
+                  </div>
                 </div>
               ))}
             </div>
-          ) : <p className="mt-5 text-muted-foreground">The programme schedule will appear here soon.</p>}
+          ) : <p className="glass mt-6 rounded-[2rem] p-8 text-muted-foreground">The programme schedule will appear here soon.</p>}
         </section>
 
         {featured.length > 0 && (
-          <section className="mx-auto max-w-7xl px-4 pt-12 md:px-6">
-            <h2 className="font-display text-2xl font-black uppercase tracking-tight">Featured on MOVIE MAX</h2>
-            <div className="mt-5 grid grid-cols-2 gap-4 md:grid-cols-3">
+          <section className="pt-16">
+            <h2 className="font-headline text-3xl font-semibold tracking-tight">Featured on MOVIE MAX</h2>
+            <div className="mt-6 grid grid-cols-2 gap-5 md:grid-cols-3">
               {featured.map((p) => (
-                <div key={p.id} className="group">
-                  <div className="aspect-video overflow-hidden rounded-sm bg-inset"><img src={p.thumbnail_url ?? ""} alt={p.title} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" /></div>
-                  <div className="mt-2 truncate font-semibold">{p.title}</div>
-                  <div className="text-xs text-muted-foreground">{formatDate(p.starts_at, tz)} · {formatTime(p.starts_at, tz)}</div>
+                <div key={p.id} className="glass group rounded-[1.75rem] p-2.5">
+                  <div className="aspect-video overflow-hidden rounded-[1.25rem] bg-inset"><img src={p.thumbnail_url ?? ""} alt={p.title} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" /></div>
+                  <div className="px-2 pb-1.5 pt-3">
+                    <div className="truncate font-semibold">{p.title}</div>
+                    <div className="text-xs text-muted-foreground">{formatDate(p.starts_at, tz)} · {formatTime(p.starts_at, tz)}</div>
+                  </div>
                 </div>
               ))}
             </div>
           </section>
         )}
-
-        <section className="mx-auto max-w-7xl px-4 pt-12 md:px-6">
-          <div className="grid gap-6 border-t border-border/70 pt-10 md:grid-cols-3">
-            <div><div className="label-caps">One channel</div><p className="mt-2 text-sm text-muted-foreground">Every viewer watches the same continuous live broadcast — just like television.</p></div>
-            <div><div className="label-caps">Any screen</div><p className="mt-2 text-sm text-muted-foreground">Phones, laptops, smart TVs and Android TV with adaptive quality.</p></div>
-            <div><div className="label-caps">East Africa Time</div><p className="mt-2 text-sm text-muted-foreground">All programme times are shown in Kampala time (EAT, UTC+3).</p></div>
-          </div>
-        </section>
       </main>
       <PublicFooter description={ch?.description} />
     </div>

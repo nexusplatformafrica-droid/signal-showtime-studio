@@ -16,6 +16,8 @@
   --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Archivo", "IBM Plex Sans", ui-sans-serif, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-public: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-headline: "Sora", "Manrope", ui-sans-serif, sans-serif;
 
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
@@ -72,6 +74,14 @@
   --color-graphic-paper: var(--graphic-paper);
   --color-graphic-night: var(--graphic-night);
   --color-graphic-black: var(--graphic-black);
+  --color-sun: var(--sun);
+  --color-sun-deep: var(--sun-deep);
+  --color-sun-foreground: var(--sun-foreground);
+  --color-emerald: var(--emerald);
+  --color-emerald-glow: var(--emerald-glow);
+  --color-emerald-foreground: var(--emerald-foreground);
+  --color-glass: var(--glass);
+  --color-cream: var(--cream);
 }
 
 :root {
@@ -142,19 +152,67 @@
   --gradient-public-hero: linear-gradient(90deg, oklch(0.09 0.004 30 / 96%) 0%, oklch(0.09 0.004 30 / 70%) 45%, transparent 100%);
 }
 
-/* Public viewer-facing website: warmer, cinematic */
+/* Public viewer-facing website: light "glassy gradients, organic forms" look —
+   warm white, frosted cards, orange sun gradient and deep emerald. */
 .theme-public {
-  --background: oklch(0.11 0.004 30);
-  --foreground: oklch(0.96 0.005 80);
-  --panel: oklch(0.15 0.005 30);
-  --panel-raised: oklch(0.19 0.006 30);
-  --inset: oklch(0.08 0.003 30);
-  --card: var(--panel);
-  --muted: oklch(0.18 0.005 30);
-  --muted-foreground: oklch(0.68 0.012 60);
-  --border: oklch(0.24 0.006 30);
-  --secondary: oklch(0.2 0.006 30);
-  --accent: oklch(0.22 0.007 30);
+  color-scheme: light;
+  --background: oklch(0.962 0.009 75);
+  --foreground: oklch(0.21 0.012 60);
+  --panel: oklch(0.99 0.004 75);
+  --panel-raised: oklch(1 0 0);
+  --inset: oklch(0.935 0.011 72);
+  --card: oklch(0.995 0.003 75);
+  --card-foreground: var(--foreground);
+  --popover: oklch(0.995 0.003 75);
+  --popover-foreground: var(--foreground);
+  --primary: oklch(0.43 0.09 165);
+  --primary-foreground: oklch(0.99 0.005 160);
+  --secondary: oklch(0.945 0.01 72);
+  --secondary-foreground: var(--foreground);
+  --muted: oklch(0.94 0.01 72);
+  --muted-foreground: oklch(0.5 0.016 60);
+  --accent: oklch(0.925 0.016 70);
+  --accent-foreground: var(--foreground);
+  --border: oklch(0.895 0.012 70);
+  --input: oklch(0.87 0.012 70);
+  --ring: oklch(0.55 0.11 165);
+  --brand: oklch(0.43 0.09 165);
+  --brand-foreground: oklch(0.99 0.005 160);
+  --gold: oklch(0.66 0.17 50);
+
+  --sun: oklch(0.8 0.13 62);
+  --sun-deep: oklch(0.69 0.18 46);
+  --sun-foreground: oklch(0.22 0.04 50);
+  --emerald: oklch(0.43 0.09 165);
+  --emerald-glow: oklch(0.7 0.14 165);
+  --emerald-foreground: oklch(0.99 0.005 160);
+  --glass: oklch(1 0 0 / 0.62);
+  --cream: oklch(0.96 0.03 80);
+
+  --gradient-sun: linear-gradient(150deg, oklch(0.95 0.04 75) 0%, oklch(0.83 0.12 62) 45%, oklch(0.7 0.18 47) 100%);
+  --gradient-emerald: linear-gradient(160deg, oklch(0.47 0.09 165) 0%, oklch(0.32 0.075 167) 60%, oklch(0.22 0.05 170) 100%);
+  --gradient-page: radial-gradient(60rem 40rem at 105% -10%, oklch(0.99 0.03 90 / 0.95), transparent 60%),
+    radial-gradient(45rem 35rem at -10% 55%, oklch(0.86 0.1 60 / 0.45), transparent 65%),
+    linear-gradient(180deg, oklch(0.955 0.012 75), oklch(0.965 0.006 75) 40%, oklch(0.95 0.012 72));
+  --shadow-soft: 0 40px 80px -40px oklch(0.45 0.06 60 / 0.4), 0 2px 8px oklch(0.4 0.03 60 / 0.06);
+  --shadow-float: 0 18px 40px -18px oklch(0.45 0.06 60 / 0.45);
+  font-family: "Manrope", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Video screens inside the light site keep the dark broadcast look. */
+.theme-screen {
+  color-scheme: dark;
+  --background: oklch(0.155 0.006 250);
+  --foreground: oklch(0.93 0.004 250);
+  --panel: oklch(0.185 0.006 250);
+  --panel-raised: oklch(0.215 0.007 250);
+  --inset: oklch(0.125 0.005 250);
+  --muted: oklch(0.22 0.006 250);
+  --muted-foreground: oklch(0.64 0.012 250);
+  --accent: oklch(0.255 0.008 250);
+  --border: oklch(0.28 0.007 250);
+  --input: oklch(0.3 0.008 250);
+  color: var(--foreground);
 }
 
 @layer base {
@@ -274,6 +332,59 @@
   }
   .field:focus-visible {
     border-color: var(--ring);
+  }
+  .public-bg {
+    background: var(--gradient-page);
+  }
+  .glass {
+    background: var(--glass);
+    border: 1px solid oklch(1 0 0 / 0.7);
+    box-shadow: var(--shadow-soft);
+    backdrop-filter: blur(22px) saturate(1.4);
+    -webkit-backdrop-filter: blur(22px) saturate(1.4);
+  }
+  .sun-card {
+    background: var(--gradient-sun);
+    color: var(--sun-foreground);
+    box-shadow: var(--shadow-soft);
+  }
+  .emerald-card {
+    background: var(--gradient-emerald);
+    color: var(--emerald-foreground);
+    box-shadow: var(--shadow-soft);
+  }
+  /* Soft silk wave across gradient cards. */
+  .silk {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+  .silk::after {
+    content: "";
+    position: absolute;
+    inset: auto -20% -35% -20%;
+    height: 70%;
+    z-index: -1;
+    background: radial-gradient(60% 55% at 50% 100%, oklch(1 0 0 / 0.35), transparent 70%);
+    transform: rotate(-8deg);
+  }
+  /* Decorative pebbles / sun orbs behind the page. */
+  .orb {
+    position: absolute;
+    border-radius: 9999px;
+    pointer-events: none;
+  }
+  .orb-stone {
+    background: radial-gradient(circle at 32% 28%, oklch(0.97 0.004 80), oklch(0.82 0.008 80) 55%, oklch(0.66 0.01 80));
+    box-shadow: inset -12px -18px 30px oklch(0.5 0.01 80 / 0.35), 0 30px 50px -25px oklch(0.4 0.02 70 / 0.5);
+  }
+  .orb-sun {
+    background: radial-gradient(circle at 40% 40%, oklch(1 0.02 95), oklch(0.97 0.06 85) 45%, oklch(0.9 0.09 75 / 0) 70%);
+    filter: blur(2px);
+  }
+  .orb-peach {
+    background: radial-gradient(circle at 35% 30%, oklch(0.88 0.11 60), oklch(0.72 0.18 45));
+    box-shadow: 0 20px 40px -18px oklch(0.6 0.17 45 / 0.6);
   }
   textarea.field {
     height: auto;

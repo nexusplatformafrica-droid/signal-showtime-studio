@@ -5,6 +5,7 @@ import { playbackUrl } from "@/lib/stream-url";
 import { LivePlayer } from "@/components/public/LivePlayer";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { OnAirBadge } from "@/components/broadcast/status";
+import { PublicBackdrop } from "@/components/public/PublicChrome";
 import { useNow } from "@/hooks/use-station";
 import { useWebPlayout } from "@/hooks/use-web-playout";
 import { findNowNext, formatClock, formatTime, isEngineOnline, isOnAir } from "@/lib/broadcast";
@@ -35,20 +36,31 @@ function Watch() {
   const webLive = !onAir && !!pick;
   const { next } = findNowNext(data.schedule, now ?? 0);
   return (
-    <div className="theme-public flex min-h-screen flex-col bg-inset text-foreground">
-      <div className="flex h-12 items-center gap-4 border-b border-border/70 bg-background px-4">
-        <Link to="/" aria-label="MOVIE MAX home"><Wordmark className="text-lg" /></Link>
-        <OnAirBadge onAir={onAir} engineOnline={online} webLive={webLive} />
-        <span className="truncate text-sm">{onAir ? data.status?.current_title ?? "Live" : webLive ? pick?.title : ""}</span>
-        <span className="ml-auto timecode text-sm text-muted-foreground">{now ? formatClock(now, tz).slice(0, 5) : ""} EAT</span>
-        <Link to="/guide" className="text-sm text-muted-foreground hover:text-foreground">TV guide</Link>
+    <div className="theme-public public-bg relative isolate flex min-h-screen flex-col text-foreground">
+      <PublicBackdrop />
+      <div className="px-3 pt-3 md:px-6">
+        <div className="glass mx-auto flex h-14 max-w-[min(100%,calc((100vh-9rem)*16/9))] items-center gap-3 rounded-full pl-5 pr-2">
+          <Link to="/" aria-label="MOVIE MAX home"><Wordmark className="text-lg" /></Link>
+          <OnAirBadge onAir={onAir} engineOnline={online} webLive={webLive} />
+          <span className="hidden truncate text-sm font-medium sm:inline">{onAir ? data.status?.current_title ?? "Live" : webLive ? pick?.title : ""}</span>
+          <span className="ml-auto timecode rounded-full bg-panel-raised px-3 py-1 text-sm shadow-sm">{now ? formatClock(now, tz).slice(0, 5) : ""} EAT</span>
+          <Link to="/guide" className="rounded-full bg-emerald px-4 py-2 text-sm font-semibold text-emerald-foreground">TV guide</Link>
+        </div>
       </div>
-      <div className="flex flex-1 items-center justify-center p-0 md:p-4">
-        <div className="monitor w-full max-w-[min(100%,calc((100vh-8rem)*16/9))]">
+      <div className="flex flex-1 items-center justify-center p-3 md:p-6">
+        <div className="theme-screen relative aspect-video w-full max-w-[min(100%,calc((100vh-9rem)*16/9))] overflow-hidden rounded-[2rem] bg-inset shadow-[var(--shadow-soft)] ring-1 ring-foreground/5">
           {ch && <LivePlayer channelId={ch.id} src={playbackUrl(ch.hls_url, ch.slug)} onAir={onAir} web={web} className="absolute inset-0" />}
         </div>
       </div>
-      {next && <div className="border-t border-border/70 bg-background px-4 py-2 text-sm text-muted-foreground">Up next <span className="timecode text-foreground">{formatTime(next.starts_at, tz)}</span> · <span className="text-foreground">{next.title}</span></div>}
+      {next && (
+        <div className="px-3 pb-4 md:px-6">
+          <div className="sun-card mx-auto flex w-fit max-w-full items-center gap-3 rounded-full px-5 py-2.5 text-sm">
+            <span className="font-headline text-xs font-semibold uppercase tracking-[0.2em] opacity-75">Up next</span>
+            <span className="timecode font-semibold">{formatTime(next.starts_at, tz)}</span>
+            <span className="truncate font-semibold">{next.title}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

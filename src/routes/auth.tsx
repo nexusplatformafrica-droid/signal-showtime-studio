@@ -108,29 +108,34 @@ function AuthPage() {
   }, [navigate]);
 
   return (
-    <div className="grid min-h-screen place-items-center bg-background px-4">
+    <div className="theme-public public-bg relative isolate grid min-h-screen place-items-center px-4 text-foreground">
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden>
+        <div className="orb orb-sun -right-40 -top-48 size-[34rem]" />
+        <div className="orb orb-stone left-[8%] top-[18%] hidden size-32 md:block" />
+        <div className="orb orb-peach bottom-[16%] right-[14%] size-10" />
+      </div>
       <div className="w-full max-w-sm">
         <div className="mb-6 flex items-center justify-between">
           <Wordmark className="text-2xl" />
-          <span className="label-caps">Broadcast Control</span>
+          <span className="rounded-full bg-panel-raised px-3 py-1 text-xs font-semibold text-muted-foreground shadow-sm">Broadcast Control</span>
         </div>
-        <div className="panel p-5">
-          <h1 className="font-display text-lg font-bold uppercase tracking-wide">
+        <div className="glass rounded-[2rem] p-7">
+          <h1 className="font-headline text-2xl font-semibold tracking-tight">
             {mode === "signin" ? "Staff sign in" : mode === "signup" ? "Create staff account" : "Reset password"}
           </h1>
           <p className="mt-1 text-xs text-muted-foreground">
             {mode === "signup" ? "New accounts need a role from a Super Admin before they can operate the station." : "Access is restricted to authorised station personnel."}
           </p>
-          {notice && <div className="mt-3 rounded-sm border border-preview/40 bg-preview/10 px-3 py-2 text-xs text-preview">{notice}</div>}
+          {notice && <div className="mt-3 rounded-2xl border border-emerald/30 bg-emerald/10 px-3 py-2 text-xs text-emerald">{notice}</div>}
           <form onSubmit={submit} className="mt-4 space-y-3">
             {mode === "signup" && (
-              <label className="block space-y-1"><span className="label-caps">Display name</span><input className="field" value={name} onChange={(e) => setName(e.target.value)} required maxLength={80} /></label>
+              <label className="block space-y-1"><span className="label-caps">Display name</span><input className="field h-10 rounded-xl bg-panel-raised" value={name} onChange={(e) => setName(e.target.value)} required maxLength={80} /></label>
             )}
-            <label className="block space-y-1"><span className="label-caps">Email</span><input className="field" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
+            <label className="block space-y-1"><span className="label-caps">Email</span><input className="field h-10 rounded-xl bg-panel-raised" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
             {mode !== "forgot" && (
-              <label className="block space-y-1"><span className="label-caps">Password</span><input className="field" type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} required /></label>
+              <label className="block space-y-1"><span className="label-caps">Password</span><input className="field h-10 rounded-xl bg-panel-raised" type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} required /></label>
             )}
-            <Button type="submit" variant="brand" className="w-full" disabled={busy}>
+            <Button type="submit" variant="emerald" size="pill" className="w-full" disabled={busy}>
               {mode === "signin" ? "Sign in" : mode === "signup" ? "Create account" : "Send reset link"}
             </Button>
           </form>

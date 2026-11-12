@@ -100,3 +100,52 @@ describe("news lower third", () => {
     expect(t.kicker).toBe("BREAKING NEWS");
   });
 });
+
+import { publishPatch, showNowPatch, takeOffPatch } from "@/lib/graphics";
+import { KIT_DEFAULTS, kitTextFor, tickerLine } from "@/lib/card-kits";
+
+describe("ticker, breaking news and pop-up cards", () => {
+  const pub = "2026-11-12T11:02:00Z";
+  it("pop-up card shows once for its duration after Show now", () => {
+    const o = ov("ad_banner", { duration: 15, show_mode: "once" }, { published_at: pub });
+    expect(isOverlayVisible(o, ctx(10))).toBe(true);
+    expect(isOverlayVisible(o, ctx(16))).toBe(false);
+    expect(isOverlayVisible(o, ctx(610))).toBe(false);
+  });
+  it("pop-up card set to repeat comes back every N minutes", () => {
+    const o = ov("ad_banner", { duration: 15, show_mode: "repeat", every: 5 }, { published_at: pub });
+    expect(isOverlayVisible(o, ctx(20))).toBe(false);
+    expect(isOverlayVisible(o, ctx(305))).toBe(true);
+  });
+  it("ticker and breaking news stay up when the duration is 0", () => {
+    expect(isOverlayVisible(ov("ticker", { duration: 0 }, { published_at: pub }), ctx(99_999))).toBe(true);
+    expect(isOverlayVisible(ov("breaking_news", {}, { published_at: pub }), ctx(99_999))).toBe(true);
+  });
+  it("ticker rolls every item, using the defaults when nothing is typed", () => {
+    const t = kitTextFor({ title: "One\nTwo" }, start, "Africa/Kampala", KIT_DEFAULTS.ticker);
+    expect(tickerLine(t.lines, "•")).toBe("One   •   Two");
+    expect(kitTextFor({}, start, "Africa/Kampala", KIT_DEFAULTS.ticker).line).toBe("Welcome to MOVIE MAX");
+    expect(kitTextFor({}, start, "Africa/Kampala", KIT_DEFAULTS.ticker).kicker).toBe("LATEST NEWS");
+  });
+  it("older tickers saved with `text` keep their wording", () => {
+    expect(kitTextFor({ text: "Old ticker" }, start, "Africa/Kampala", KIT_DEFAULTS.ticker).line).toBe("Old ticker");
+  });
+});
+
+describe("publishing graphics", () => {
+  const ts = "2026-11-12T12:00:00Z";
+  const row = { config: { title: "A" }, enabled: true, published_config: { title: "A" }, published_enabled: true };
+  it("does not restart the timer of a graphic that did not change", () => {
+    expect(publishPatch(row, { title: "A" }, true, ts)).not.toHaveProperty("published_at");
+  });
+  it("restarts the timer when the design or on/off state changed", () => {
+    expect(publishPatch(row, { title: "B" }, true, ts).published_at).toBe(ts);
+    expect(publishPatch(row, { title: "A" }, false, ts).published_at).toBe(ts);
+  });
+  it("Show now always switches it on and restarts its timer", () => {
+    expect(showNowPatch({ title: "A" }, ts)).toEqual({ config: { title: "A" }, enabled: true, published_config: { title: "A" }, published_enabled: true, published_at: ts });
+  });
+  it("Take off air removes it from viewers", () => {
+    expect(takeOffPatch()).toEqual({ enabled: false, published_enabled: false });
+  });
+});

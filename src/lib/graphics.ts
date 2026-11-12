@@ -160,3 +160,25 @@ export function tickerSeconds(text: string, speed = 60) {
   const px = 1920 + text.length * 22;
   return Math.max(8, px / Math.max(10, speed));
 }
+
+export interface PublishRow { config: unknown; enabled: boolean; published_config: unknown; published_enabled: boolean }
+
+/**
+ * Columns to write when publishing one graphic. The on-air timer (`published_at`) only restarts
+ * for graphics whose design or on/off state actually changed, so publishing one card never
+ * re-shows "once" cards that already played.
+ */
+export function publishPatch(row: PublishRow, draft: OverlayConfig, enabled: boolean, ts: string) {
+  const changed = JSON.stringify(draft) !== JSON.stringify(row.published_config ?? null) || enabled !== row.published_enabled;
+  return { config: draft, enabled, published_config: draft, published_enabled: enabled, ...(changed ? { published_at: ts } : {}) };
+}
+
+/** "Show now": put one graphic on air immediately, restarting its timer. */
+export function showNowPatch(draft: OverlayConfig, ts: string) {
+  return { config: draft, enabled: true, published_config: draft, published_enabled: true, published_at: ts };
+}
+
+/** "Take off air": remove one graphic from viewers straight away. */
+export function takeOffPatch() {
+  return { enabled: false, published_enabled: false };
+}

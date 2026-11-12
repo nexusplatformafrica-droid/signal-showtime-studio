@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useWebPlayout } from "@/hooks/use-web-playout";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { publicStationQuery } from "@/components/public/station-query";
-import { PublicFooter, PublicHeader } from "@/components/public/PublicChrome";
+import { PublicBackdrop, PublicFooter, PublicHeader } from "@/components/public/PublicChrome";
 import { useNow } from "@/hooks/use-station";
 import { CATEGORY_LABELS } from "@/lib/labels";
 import { addDays, durationMinutes, formatDate, formatDuration, formatTime, isEngineOnline, isOnAir, toZoned, zonedToUtc } from "@/lib/broadcast";
@@ -43,36 +43,39 @@ function Guide() {
   }, [data.schedule, selected, tz]);
 
   return (
-    <div className="theme-public min-h-screen bg-background text-foreground">
+    <div className="theme-public public-bg relative isolate min-h-screen overflow-x-hidden text-foreground">
+      <PublicBackdrop />
       <PublicHeader onAir={onAir} engineOnline={online} webLive={!onAir && !!pick} />
-      <main className="mx-auto max-w-5xl px-4 py-10 md:px-6">
-        <h1 className="font-display text-4xl font-black uppercase tracking-tight">TV guide</h1>
-        <p className="mt-2 text-sm text-muted-foreground">All times East Africa Time (Kampala, UTC+3).</p>
-        <div className="mt-6 flex gap-1 overflow-x-auto border-b border-border/70">
-          {days.map((d) => (
-            <button key={d} onClick={() => setDay(d)} className={cn("relative shrink-0 px-4 py-2.5 text-sm", d === selected ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
-              <span className="block text-[10px] font-semibold uppercase tracking-widest">{d === today ? "Today" : formatDate(zonedToUtc(d, "12:00", tz), tz, { weekday: "short" })}</span>
-              <span className="timecode">{formatDate(zonedToUtc(d, "12:00", tz), tz, { day: "numeric", month: "short" })}</span>
-              {d === selected && <span className="absolute inset-x-3 bottom-0 h-0.5 bg-program" />}
-            </button>
-          ))}
+      <main className="mx-auto max-w-5xl px-4 pt-10 md:px-6">
+        <div className="glass rounded-[2rem] p-7 md:p-9">
+          <span className="inline-flex rounded-full bg-cream px-3 py-1 text-xs font-semibold text-muted-foreground">7-day programme guide</span>
+          <h1 className="mt-4 font-headline text-4xl font-semibold tracking-tight md:text-5xl">TV guide</h1>
+          <p className="mt-2 text-sm text-muted-foreground">All times East Africa Time (Kampala, UTC+3).</p>
+          <div className="mt-6 flex gap-2 overflow-x-auto pb-1">
+            {days.map((d) => (
+              <button key={d} onClick={() => setDay(d)} className={cn("shrink-0 rounded-2xl px-4 py-2 text-left text-sm transition", d === selected ? "bg-emerald text-emerald-foreground shadow-[var(--shadow-float)]" : "bg-panel-raised/80 text-muted-foreground hover:text-foreground")}>
+                <span className="block text-[10px] font-semibold uppercase tracking-widest">{d === today ? "Today" : formatDate(zonedToUtc(d, "12:00", tz), tz, { weekday: "short" })}</span>
+                <span className="font-semibold tabular-nums">{formatDate(zonedToUtc(d, "12:00", tz), tz, { day: "numeric", month: "short" })}</span>
+              </button>
+            ))}
+          </div>
         </div>
-        {list.length === 0 && <p className="py-12 text-center text-muted-foreground">No programmes have been published for this day yet.</p>}
-        <div className="divide-y divide-border/70">
+        {list.length === 0 && <p className="glass mt-5 rounded-[2rem] py-12 text-center text-muted-foreground">No programmes have been published for this day yet.</p>}
+        <div className="mt-5 space-y-3">
           {list.map((p) => {
             const isConfirmedOnAir = onAir && data.status?.current_entry_id === p.id;
             const ended = now != null && +new Date(p.ends_at) < now;
             return (
-              <article key={p.id} className={cn("grid grid-cols-[64px_1fr] gap-4 py-4 sm:grid-cols-[80px_160px_1fr]", ended && "opacity-50")}>
-                <div>
+              <article key={p.id} className={cn("glass grid grid-cols-[72px_1fr] items-center gap-4 rounded-[1.5rem] p-3 sm:grid-cols-[88px_168px_1fr]", ended && "opacity-55")}>
+                <div className="rounded-2xl bg-cream px-2 py-2 text-center">
                   <div className="timecode text-lg font-semibold">{formatTime(p.starts_at, tz)}</div>
                   <div className="timecode text-xs text-muted-foreground">{formatTime(p.ends_at, tz)}</div>
                 </div>
-                <div className="hidden aspect-video overflow-hidden rounded-sm bg-inset sm:block">{p.thumbnail_url && <img src={p.thumbnail_url} alt="" loading="lazy" className="h-full w-full object-cover" />}</div>
-                <div className="min-w-0">
+                <div className="hidden aspect-video overflow-hidden rounded-2xl bg-inset sm:block">{p.thumbnail_url && <img src={p.thumbnail_url} alt="" loading="lazy" className="h-full w-full object-cover" />}</div>
+                <div className="min-w-0 pr-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className="font-semibold">{p.title}</h2>
-                    {isConfirmedOnAir && <span className="rounded-sm bg-program px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-program-foreground">On air</span>}
+                    {isConfirmedOnAir && <span className="rounded-full bg-program px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-program-foreground">On air</span>}
                   </div>
                   <div className="mt-0.5 text-xs text-muted-foreground">{CATEGORY_LABELS[p.category]} · {formatDuration(durationMinutes(p.starts_at, p.ends_at) * 60)}</div>
                   {p.description && <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">{p.description}</p>}

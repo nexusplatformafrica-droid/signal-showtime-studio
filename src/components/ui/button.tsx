@@ -21,6 +21,8 @@ const buttonVariants = cva(
         preview: "bg-preview text-preview-foreground font-semibold tracking-wide hover:bg-preview/85",
         warn: "bg-warn text-warn-foreground font-semibold hover:bg-warn/85",
         brand: "bg-brand text-brand-foreground font-semibold uppercase tracking-wider hover:bg-brand/85",
+        emerald: "bg-emerald text-emerald-foreground font-semibold shadow-[var(--shadow-float)] hover:bg-emerald/90",
+        cream: "border border-border/70 bg-cream text-foreground font-semibold shadow-[var(--shadow-float)] hover:bg-panel-raised",
       },
       size: {
         default: "h-9 px-4 py-2",
@@ -29,6 +31,8 @@ const buttonVariants = cva(
         lg: "h-10 rounded-md px-8",
         icon: "h-9 w-9",
         "icon-sm": "h-7 w-7 [&_svg]:size-3.5",
+        pill: "h-11 rounded-full px-6",
+        "pill-sm": "h-9 rounded-full px-4 text-sm",
       },
     },
     defaultVariants: {

@@ -45,14 +45,15 @@ function ResetPassword() {
     navigate({ to: "/admin" });
   }
   return (
-    <div className="grid min-h-screen place-items-center bg-background px-4">
+    <div className="theme-public public-bg relative isolate grid min-h-screen place-items-center px-4 text-foreground">
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden><div className="orb orb-sun -right-40 -top-48 size-[34rem]" /></div>
       <div className="w-full max-w-sm">
         <Wordmark className="mb-6 text-2xl" />
-        <form onSubmit={submit} className="panel space-y-3 p-5">
-          <h1 className="font-display text-lg font-bold uppercase tracking-wide">Set a new password</h1>
+        <form onSubmit={submit} className="glass space-y-3 rounded-[2rem] p-7">
+          <h1 className="font-headline text-2xl font-semibold tracking-tight">Set a new password</h1>
           {!ready && <p className="text-xs text-muted-foreground">Open this page from the link in your password reset email.</p>}
-          <label className="block space-y-1"><span className="label-caps">New password</span><input className="field" type="password" minLength={8} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required disabled={!ready} /></label>
-          <Button type="submit" variant="brand" className="w-full" disabled={!ready || busy}>Update password</Button>
+          <label className="block space-y-1"><span className="label-caps">New password</span><input className="field h-10 rounded-xl bg-panel-raised" type="password" minLength={8} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required disabled={!ready} /></label>
+          <Button type="submit" variant="emerald" size="pill" className="w-full" disabled={!ready || busy}>Update password</Button>
         </form>
       </div>
     </div>
