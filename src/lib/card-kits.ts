@@ -103,6 +103,8 @@ export interface KitText {
   subtitle: string;
   badge: string;
   time: string;
+  /** Day of the month, for the date boxes on breaking news. */
+  day: string;
 }
 
 export interface KitConfig {
@@ -130,6 +132,7 @@ export function kitTextFor(c: KitConfig, now: number, tz: string, defaults: { ki
     subtitle: fillNewsText(c.subtitle, now, tz),
     badge: fillNewsText(c.badge, now, tz),
     time: fillNewsText(c.time_text ?? "{clock}", now, tz),
+    day: fillNewsText("{day}", now, tz),
   };
 }
 
