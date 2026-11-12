@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Copy, KeyRound, Plus, X } from "lucide-react";
+import { Copy, Download, KeyRound, Plus, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { useStation } from "@/components/admin/station-context";
@@ -190,6 +190,8 @@ function EngineTab() {
         )}
       </section>
 
+      <RunEngineGuide origin={origin} lastError={status?.last_error ?? null} />
+
       <section className="panel lg:col-span-2">
         <div className="panel-header">Engine API · Authorization: Bearer &lt;token&gt;</div>
         <table className="data-table w-full"><tbody>
@@ -346,6 +348,90 @@ function AuditTab() {
         </tbody>
       </table>
       {!logs.data?.length && <EmptyState title="No changes recorded yet" />}
+    </section>
+  );
+}
+
+
+function CommandBlock({ title, code }: { title: string; code: string }) {
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between"><span className="label-caps">{title}</span><button className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground" onClick={() => copyText(code, "Commands copied")}><Copy className="size-3" />Copy</button></div>
+      <pre className="overflow-x-auto rounded-sm border border-border bg-inset p-2 font-mono text-[11px] leading-relaxed">{code}</pre>
+    </div>
+  );
+}
+
+/** Step-by-step setup for the downloadable playout engine (public/engine/movie-max-engine.mjs). */
+function RunEngineGuide({ origin, lastError }: { origin: string; lastError: string | null }) {
+  const [os, setOs] = useState<"linux" | "windows">("linux");
+  const isPreview = /id-preview--|lovableproject\.com|localhost/.test(origin);
+  const api = `${origin}/api/public/engine/v1`;
+  const file = `${origin}/engine/movie-max-engine.mjs`;
+  const linux = [
+    "# 1) Install Node.js 20 and FFmpeg (Ubuntu/Debian)",
+    "curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -",
+    "sudo apt-get install -y nodejs ffmpeg",
+    "",
+    "# 2) Download the engine",
+    "sudo mkdir -p /opt/moviemax && cd /opt/moviemax",
+    `sudo curl -fsSLo movie-max-engine.mjs ${file}`,
+    "",
+    "# 3) Save your settings (paste your engine token and Wowza live password)",
+    "sudo tee /opt/moviemax/engine.env >/dev/null <<'ENV'",
+    `MMX_API=${api}`,
+    "MMX_TOKEN=mmx_eng_PASTE_YOUR_TOKEN",
+    "MMX_PUBLISH_USER=sykapjxrcp",
+    "MMX_PUBLISH_PASS=YOUR_WOWZA_LIVE_PASSWORD",
+    "ENV",
+    "",
+    "# 4) Keep it running 24/7 (starts again after reboots and crashes)",
+    "sudo tee /etc/systemd/system/moviemax-engine.service >/dev/null <<'UNIT'",
+    "[Unit]",
+    "Description=MOVIE MAX playout engine",
+    "After=network-online.target",
+    "[Service]",
+    "EnvironmentFile=/opt/moviemax/engine.env",
+    "ExecStart=/usr/bin/node /opt/moviemax/movie-max-engine.mjs",
+    "Restart=always",
+    "RestartSec=5",
+    "[Install]",
+    "WantedBy=multi-user.target",
+    "UNIT",
+    "sudo systemctl daemon-reload && sudo systemctl enable --now moviemax-engine",
+    "",
+    "# Watch what it is doing",
+    "journalctl -u moviemax-engine -f",
+  ].join("\n");
+  const windows = [
+    "# 1) Install Node.js and FFmpeg (PowerShell)",
+    "winget install OpenJS.NodeJS.LTS Gyan.FFmpeg",
+    "# close and reopen PowerShell after installing",
+    "",
+    "# 2) Download and start the engine (the channel stays live while this window is open)",
+    "mkdir C:\\moviemax; cd C:\\moviemax",
+    `curl.exe -fsSLo movie-max-engine.mjs ${file}`,
+    `$env:MMX_API="${api}"`,
+    '$env:MMX_TOKEN="mmx_eng_PASTE_YOUR_TOKEN"',
+    '$env:MMX_PUBLISH_USER="sykapjxrcp"',
+    '$env:MMX_PUBLISH_PASS="YOUR_WOWZA_LIVE_PASSWORD"',
+    "node movie-max-engine.mjs",
+  ].join("\n");
+  return (
+    <section className="panel lg:col-span-2">
+      <div className="panel-header">Run the playout engine
+        <span className="flex items-center gap-1">
+          {(["linux", "windows"] as const).map((o) => <button key={o} onClick={() => setOs(o)} className={cn("rounded-sm px-2 py-0.5 text-[11px]", os === o ? "bg-accent text-foreground" : "text-muted-foreground")}>{o === "linux" ? "Linux server (24/7)" : "Windows PC (testing)"}</button>)}
+          <a href="/engine/movie-max-engine.mjs" download className="ml-1 flex items-center gap-1 rounded-sm px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"><Download className="size-3" />Download</a>
+        </span>
+      </div>
+      <div className="space-y-3 p-3 text-xs">
+        <p className="text-muted-foreground">This small program plays your published schedule with FFmpeg and sends it to Wowza. Wowza only receives and delivers the stream, so the engine must run on a computer that stays on — a small Linux server (VPS, about $5/month) is best. Generate a token above, then run:</p>
+        {isPreview && <div className="rounded-sm border border-warn/40 bg-warn/10 p-2 text-warn">Publish the site first, then open this page on your published address — the commands below will use it automatically. The preview address is not reachable from your server.</div>}
+        {lastError && <div className="rounded-sm border border-program/40 bg-program/10 p-2 text-program">Engine reported: {lastError}</div>}
+        <CommandBlock title={os === "linux" ? "Ubuntu / Debian server" : "Windows PowerShell"} code={os === "linux" ? linux : windows} />
+        <p className="text-muted-foreground">Your Wowza server requires a login to receive video. Set a "Live Broadcast &amp; FTP Password" in your Wowza panel and use it as <code>MMX_PUBLISH_PASS</code>; the username is your publish point name. The password stays on your server — never enter it on this website.</p>
+      </div>
     </section>
   );
 }

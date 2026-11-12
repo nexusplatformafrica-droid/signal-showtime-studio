@@ -3,6 +3,9 @@
 The playout engine is a **separate, persistent server** (e.g. Ubuntu + FFmpeg + MediaMTX/nginx-rtmp, supervised by systemd).
 It must never run inside the web app or serverless functions. The web app stores schedules and settings; the engine executes them.
 
+## Reference engine
+`public/engine/movie-max-engine.mjs` (Node 18+, FFmpeg) implements this contract for scheduled media, playlists, standby and the play/stop/skip/standby/reload commands. Setup steps are shown in **Settings → Playout engine**. Live-input switching and graphics compositing are not in v1.
+
 ## Authentication
 Create a token in **Settings → Playout engine** (Super Admin). Send it on every request:
 
