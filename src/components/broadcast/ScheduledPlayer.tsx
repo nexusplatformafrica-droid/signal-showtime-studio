@@ -153,7 +153,7 @@ export function ScheduledPlayer({ bundle, skewMs = 0, poster, controls = true, m
         </div>
       )}
       {controls && !showOverlay && (blocked || muted) && (
-        <button onClick={start} className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-sm bg-background/85 px-2.5 py-1.5 text-xs font-semibold backdrop-blur hover:bg-background">
+        <button onClick={start} className="absolute left-1/2 top-3 z-10 -translate-x-1/2 inline-flex items-center gap-1.5 rounded-sm bg-background/85 px-2.5 py-1.5 text-xs font-semibold backdrop-blur hover:bg-background">
           <VolumeX className="size-3.5" /> {blocked ? "Tap to watch" : "Tap for sound"}
         </button>
       )}

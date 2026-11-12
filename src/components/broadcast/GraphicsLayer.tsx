@@ -16,6 +16,15 @@ const pos = (p?: string) => {
 };
 const BARS = new Set(["ticker", "breaking_news"]);
 
+function groupByPosition(list: LiveOverlay[]): [string, LiveOverlay[]][] {
+  const m = new Map<string, LiveOverlay[]>();
+  for (const o of list) {
+    const p = o.config.position ?? "top-right";
+    m.set(p, [...(m.get(p) ?? []), o]);
+  }
+  return [...m.entries()];
+}
+
 /**
  * Broadcast graphics drawn over the picture. Sizes scale with the player width (container
  * units), so the website, the 1920×1080 output page and the admin preview match.
@@ -29,12 +38,14 @@ export function GraphicsLayer({ overlays, ctx, timezone, className }: { overlays
 
   return (
     <div className={cn("pointer-events-none absolute inset-0 overflow-hidden text-foreground", className)} style={{ containerType: "inline-size" }} aria-hidden>
-      {placed.map((o) => {
+      {groupByPosition(placed).map(([position, items]) => (
+        <div key={position} className={cn("absolute flex gap-[0.8cqw]", position.startsWith("top") ? "items-start" : "flex-col-reverse items-start", position.endsWith("right") && "flex-row-reverse", pos(position))}>
+      {items.map((o) => {
         const c = o.config;
         const accent = { backgroundColor: c.color ?? "var(--tally-program)" };
-        const style: React.CSSProperties = { opacity: c.opacity ?? 1, width: BARS.has(o.kind) ? "100%" : o.kind === "logo" || o.kind === "on_air" || o.kind === "clock" || o.kind === "live_indicator" ? `${c.size ?? 20}%` : undefined, maxWidth: `${Math.max(c.size ?? 30, 30)}%` };
+        const style: React.CSSProperties = { opacity: c.opacity ?? 1, width: BARS.has(o.kind) ? "94cqw" : o.kind === "logo" ? `${c.size ?? 8}cqw` : undefined, maxWidth: `${Math.max(c.size ?? 30, 30)}cqw` };
         return (
-          <div key={o.id} className={cn("absolute", pos(c.position))} style={style}>
+          <div key={o.id} style={style}>
             {o.kind === "logo" && (c.logo_url ? <img src={c.logo_url} alt="" className="w-full" /> : <Wordmark className="text-[clamp(8px,2.2cqw,48px)]" />)}
             {(o.kind === "on_air" || o.kind === "live_indicator") && <span className="inline-block whitespace-nowrap rounded-sm px-[0.6em] py-[0.2em] font-bold uppercase tracking-widest text-program-foreground" style={{ ...accent, ...fs }}>{c.text || (o.kind === "on_air" ? "On Air" : "Live")}</span>}
             {o.kind === "clock" && <span className="timecode inline-block whitespace-nowrap rounded-sm bg-inset/80 px-[0.5em] py-[0.15em] font-semibold" style={fs}>{formatClock(ctx.now, timezone).slice(0, 5)}</span>}
@@ -55,6 +66,8 @@ export function GraphicsLayer({ overlays, ctx, timezone, className }: { overlays
           </div>
         );
       })}
+        </div>
+      ))}
       {bars.length > 0 && (
         <div className="absolute inset-x-0 bottom-0 flex flex-col">
           {bars.map((o) => <div key={o.id} style={{ opacity: o.config.opacity ?? 1 }}><Bar o={o} fs={fs} /></div>)}
