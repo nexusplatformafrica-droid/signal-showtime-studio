@@ -31,7 +31,7 @@ export function StatusChip({ tone, children, className }: { tone: "program" | "p
   return <span className={cn("inline-flex h-5 items-center gap-1 rounded-sm border px-1.5 text-[10px] font-semibold uppercase tracking-wider", map, className)}>{children}</span>;
 }
 
-export function Metric({ label, value, sub, tone }: { label: string; value: React.ReactNode; sub?: React.ReactNode; tone?: "program" | "preview" | "warn" }) {
+export function Metric({ label, value, sub, tone }: { label: string; value: React.ReactNode; sub?: React.ReactNode | undefined; tone?: "program" | "preview" | "warn" | undefined }) {
   return (
     <div className="min-w-0 px-3 py-2">
       <div className="label-caps truncate">{label}</div>

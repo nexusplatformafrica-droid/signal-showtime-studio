@@ -64,7 +64,7 @@ export function ScheduleEditor({ seed, onClose }: { seed: EditorSeed | null; onC
       const d = seed.date ?? toZoned(new Date(), tz).date;
       setTitle(""); setDescription(""); setCategory("movie"); setMode("fixed"); setSourceKind("media"); setMedia(null); setPlaylistId(""); setThumb(null);
       setDate(d); setStart(seed.time ?? "20:00");
-      const [h, m] = (seed.time ?? "20:00").split(":").map(Number);
+      const [h = 20, m = 0] = (seed.time ?? "20:00").split(":").map(Number);
       setEnd(minutesToTime(Math.min(h * 60 + m + 60, 23 * 60 + 59))); setEndDate(d);
       setPriority(0); setNotes(""); setCommercial(false); setFreq("none"); setWeekdays([]); setUntil("");
     }
@@ -122,8 +122,9 @@ export function ScheduleEditor({ seed, onClose }: { seed: EditorSeed | null; onC
   async function startAfterPrevious() {
     if (!startsAt) return;
     const { data } = await supabase.from("schedule_entries").select("ends_at").eq("channel_id", channel.id).neq("status", "cancelled").lte("ends_at", new Date(startsAt.getTime() + 6 * 3600_000).toISOString()).lt("starts_at", startsAt.toISOString()).order("ends_at", { ascending: false }).limit(1);
-    if (!data?.[0]) return toast.message("No earlier programme found");
-    const prevEnd = new Date(data[0].ends_at);
+    const prev = data?.[0];
+    if (!prev) { toast.message("No earlier programme found"); return; }
+    const prevEnd = new Date(prev.ends_at);
     const z = toZoned(prevEnd, tz);
     const len = mins || 60;
     setDate(z.date);
@@ -134,8 +135,8 @@ export function ScheduleEditor({ seed, onClose }: { seed: EditorSeed | null; onC
   }
 
   async function save(publish: boolean) {
-    if (!startsAt || !endsAt || mins <= 0) return toast.error("Check the start and end times");
-    if (!title.trim()) return toast.error("Programme title is required");
+    if (!startsAt || !endsAt || mins <= 0) { toast.error("Check the start and end times"); return; }
+    if (!title.trim()) { toast.error("Programme title is required"); return; }
     setBusy(true);
     try {
       const base = {
@@ -181,7 +182,7 @@ export function ScheduleEditor({ seed, onClose }: { seed: EditorSeed | null; onC
   async function setStatus(status: ScheduleEntry["status"]) {
     if (!entry) return;
     const { error } = await supabase.from("schedule_entries").update({ status }).eq("id", entry.id);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     qc.invalidateQueries({ queryKey: ["schedule", channel.id] });
     onClose();
   }
@@ -191,7 +192,7 @@ export function ScheduleEditor({ seed, onClose }: { seed: EditorSeed | null; onC
       ? supabase.from("schedule_entries").delete().eq("recurrence_id", entry.recurrence_id).gte("starts_at", entry.starts_at)
       : supabase.from("schedule_entries").delete().eq("id", entry.id);
     const { error } = await q;
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     qc.invalidateQueries({ queryKey: ["schedule", channel.id] });
     onClose();
   }
@@ -290,6 +291,6 @@ export function ScheduleEditor({ seed, onClose }: { seed: EditorSeed | null; onC
 }
 
 function addDay(d: string) {
-  const [y, m, dd] = d.split("-").map(Number);
+  const [y = 1970, m = 1, dd = 1] = d.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, dd + 1)).toISOString().slice(0, 10);
 }

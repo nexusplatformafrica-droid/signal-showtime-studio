@@ -64,7 +64,8 @@ export async function listParts(key: string, uploadId: string) {
   if (!res.ok) throw new Error(`Could not read upload progress [${res.status}]`);
   const parts: { partNumber: number; etag: string; size: number }[] = [];
   for (const m of body.matchAll(/<Part>([\s\S]*?)<\/Part>/g)) {
-    parts.push({ partNumber: Number(tag(m[1], "PartNumber")), etag: tag(m[1], "ETag") ?? "", size: Number(tag(m[1], "Size")) });
+    const inner = m[1] ?? "";
+    parts.push({ partNumber: Number(tag(inner, "PartNumber")), etag: tag(inner, "ETag") ?? "", size: Number(tag(inner, "Size")) });
   }
   return parts;
 }

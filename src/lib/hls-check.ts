@@ -19,22 +19,23 @@ export interface HlsCheckResult {
   latencyMs: number | null;
 }
 
-const attr = (line: string, name: string) => {
+const attr = (line: string, name: string): string | null => {
   const m = line.match(new RegExp(`${name}=("([^"]*)"|[^,]*)`));
-  return m ? (m[2] ?? m[1]) : null;
+  return m ? (m[2] ?? m[1] ?? null) : null;
 };
 
 export function parseMaster(text: string, baseUrl: string) {
   const lines = text.split(/\r?\n/).map((l) => l.trim());
   const variants: HlsCheckResult["variants"] = [];
   for (let i = 0; i < lines.length; i++) {
-    if (lines[i].startsWith("#EXT-X-STREAM-INF")) {
+    const line = lines[i] ?? "";
+    if (line.startsWith("#EXT-X-STREAM-INF")) {
       const uri = lines.slice(i + 1).find((l) => l && !l.startsWith("#"));
       if (uri) {
         variants.push({
-          bandwidth: Number(attr(lines[i], "BANDWIDTH")) || null,
-          resolution: attr(lines[i], "RESOLUTION"),
-          codecs: attr(lines[i], "CODECS"),
+          bandwidth: Number(attr(line, "BANDWIDTH")) || null,
+          resolution: attr(line, "RESOLUTION"),
+          codecs: attr(line, "CODECS"),
           uri: new URL(uri, baseUrl).toString(),
         });
       }
@@ -49,7 +50,7 @@ export function parseMedia(text: string, baseUrl: string) {
   let targetDuration: number | null = null;
   let mediaSequence: number | null = null;
   for (let i = 0; i < lines.length; i++) {
-    const l = lines[i];
+    const l = lines[i] ?? "";
     if (l.startsWith("#EXT-X-TARGETDURATION:")) targetDuration = Number(l.split(":")[1]);
     if (l.startsWith("#EXT-X-MEDIA-SEQUENCE:")) mediaSequence = Number(l.split(":")[1]);
     if (l.startsWith("#EXTINF")) {
@@ -159,7 +160,7 @@ export async function checkHlsStream(url: string | null | undefined): Promise<Hl
   }
 
   // Segment fetch + container sniff
-  const last = media.segments[media.segments.length - 1];
+  const last = media.segments[media.segments.length - 1] ?? "";
   try {
     const res = await timedFetch(last, { headers: { range: "bytes=0-187" } });
     const buf = new Uint8Array(await res.arrayBuffer());

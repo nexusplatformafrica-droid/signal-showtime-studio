@@ -12,11 +12,19 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as GuideRouteImport } from './routes/guide'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as WatchRouteImport } from './routes/watch'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as AuthenticatedAdminControlRouteImport } from './routes/_authenticated/admin/control'
+import { Route as AuthenticatedAdminEndpointsRouteImport } from './routes/_authenticated/admin/endpoints'
+import { Route as AuthenticatedAdminGraphicsRouteImport } from './routes/_authenticated/admin/graphics'
+import { Route as AuthenticatedAdminLiveRouteImport } from './routes/_authenticated/admin/live'
 import { Route as AuthenticatedAdminMediaRouteImport } from './routes/_authenticated/admin/media'
+import { Route as AuthenticatedAdminPlaylistsRouteImport } from './routes/_authenticated/admin/playlists'
+import { Route as AuthenticatedAdminScheduleRouteImport } from './routes/_authenticated/admin/schedule'
+import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin/settings'
 import { Route as ApiPublicThumbnailsSplatRouteImport } from './routes/api/public/thumbnails/$'
 import { Route as ApiPublicEngineV1SplatRouteImport } from './routes/api/public/engine/v1/$'
 
@@ -34,9 +42,19 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GuideRoute = GuideRouteImport.update({
+  id: '/guide',
+  path: '/guide',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WatchRoute = WatchRouteImport.update({
+  id: '/watch',
+  path: '/watch',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAdminRouteRoute = AuthenticatedAdminRouteRouteImport.update({
@@ -55,11 +73,46 @@ const AuthenticatedAdminControlRoute =
     path: '/control',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
+const AuthenticatedAdminEndpointsRoute =
+  AuthenticatedAdminEndpointsRouteImport.update({
+    id: '/endpoints',
+    path: '/endpoints',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
+const AuthenticatedAdminGraphicsRoute =
+  AuthenticatedAdminGraphicsRouteImport.update({
+    id: '/graphics',
+    path: '/graphics',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
+const AuthenticatedAdminLiveRoute = AuthenticatedAdminLiveRouteImport.update({
+  id: '/live',
+  path: '/live',
+  getParentRoute: () => AuthenticatedAdminRouteRoute,
+} as any)
 const AuthenticatedAdminMediaRoute = AuthenticatedAdminMediaRouteImport.update({
   id: '/media',
   path: '/media',
   getParentRoute: () => AuthenticatedAdminRouteRoute,
 } as any)
+const AuthenticatedAdminPlaylistsRoute =
+  AuthenticatedAdminPlaylistsRouteImport.update({
+    id: '/playlists',
+    path: '/playlists',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
+const AuthenticatedAdminScheduleRoute =
+  AuthenticatedAdminScheduleRouteImport.update({
+    id: '/schedule',
+    path: '/schedule',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
+const AuthenticatedAdminSettingsRoute =
+  AuthenticatedAdminSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
 const ApiPublicThumbnailsSplatRoute =
   ApiPublicThumbnailsSplatRouteImport.update({
     id: '/api/public/thumbnails/$',
@@ -75,10 +128,18 @@ const ApiPublicEngineV1SplatRoute = ApiPublicEngineV1SplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/guide': typeof GuideRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/watch': typeof WatchRoute
   '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/admin/control': typeof AuthenticatedAdminControlRoute
+  '/admin/endpoints': typeof AuthenticatedAdminEndpointsRoute
+  '/admin/graphics': typeof AuthenticatedAdminGraphicsRoute
+  '/admin/live': typeof AuthenticatedAdminLiveRoute
   '/admin/media': typeof AuthenticatedAdminMediaRoute
+  '/admin/playlists': typeof AuthenticatedAdminPlaylistsRoute
+  '/admin/schedule': typeof AuthenticatedAdminScheduleRoute
+  '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/thumbnails/$': typeof ApiPublicThumbnailsSplatRoute
   '/api/public/engine/v1/$': typeof ApiPublicEngineV1SplatRoute
@@ -86,9 +147,17 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/guide': typeof GuideRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/watch': typeof WatchRoute
   '/admin/control': typeof AuthenticatedAdminControlRoute
+  '/admin/endpoints': typeof AuthenticatedAdminEndpointsRoute
+  '/admin/graphics': typeof AuthenticatedAdminGraphicsRoute
+  '/admin/live': typeof AuthenticatedAdminLiveRoute
   '/admin/media': typeof AuthenticatedAdminMediaRoute
+  '/admin/playlists': typeof AuthenticatedAdminPlaylistsRoute
+  '/admin/schedule': typeof AuthenticatedAdminScheduleRoute
+  '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/api/public/thumbnails/$': typeof ApiPublicThumbnailsSplatRoute
   '/api/public/engine/v1/$': typeof ApiPublicEngineV1SplatRoute
@@ -98,10 +167,18 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/guide': typeof GuideRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/watch': typeof WatchRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/_authenticated/admin/control': typeof AuthenticatedAdminControlRoute
+  '/_authenticated/admin/endpoints': typeof AuthenticatedAdminEndpointsRoute
+  '/_authenticated/admin/graphics': typeof AuthenticatedAdminGraphicsRoute
+  '/_authenticated/admin/live': typeof AuthenticatedAdminLiveRoute
   '/_authenticated/admin/media': typeof AuthenticatedAdminMediaRoute
+  '/_authenticated/admin/playlists': typeof AuthenticatedAdminPlaylistsRoute
+  '/_authenticated/admin/schedule': typeof AuthenticatedAdminScheduleRoute
+  '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/thumbnails/$': typeof ApiPublicThumbnailsSplatRoute
   '/api/public/engine/v1/$': typeof ApiPublicEngineV1SplatRoute
@@ -111,10 +188,18 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/guide'
     | '/reset-password'
+    | '/watch'
     | '/admin'
     | '/admin/control'
+    | '/admin/endpoints'
+    | '/admin/graphics'
+    | '/admin/live'
     | '/admin/media'
+    | '/admin/playlists'
+    | '/admin/schedule'
+    | '/admin/settings'
     | '/admin/'
     | '/api/public/thumbnails/$'
     | '/api/public/engine/v1/$'
@@ -122,9 +207,17 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/guide'
     | '/reset-password'
+    | '/watch'
     | '/admin/control'
+    | '/admin/endpoints'
+    | '/admin/graphics'
+    | '/admin/live'
     | '/admin/media'
+    | '/admin/playlists'
+    | '/admin/schedule'
+    | '/admin/settings'
     | '/admin'
     | '/api/public/thumbnails/$'
     | '/api/public/engine/v1/$'
@@ -133,10 +226,18 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/guide'
     | '/reset-password'
+    | '/watch'
     | '/_authenticated/admin'
     | '/_authenticated/admin/control'
+    | '/_authenticated/admin/endpoints'
+    | '/_authenticated/admin/graphics'
+    | '/_authenticated/admin/live'
     | '/_authenticated/admin/media'
+    | '/_authenticated/admin/playlists'
+    | '/_authenticated/admin/schedule'
+    | '/_authenticated/admin/settings'
     | '/_authenticated/admin/'
     | '/api/public/thumbnails/$'
     | '/api/public/engine/v1/$'
@@ -146,7 +247,9 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  GuideRoute: typeof GuideRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  WatchRoute: typeof WatchRoute
   ApiPublicThumbnailsSplatRoute: typeof ApiPublicThumbnailsSplatRoute
   ApiPublicEngineV1SplatRoute: typeof ApiPublicEngineV1SplatRoute
 }
@@ -174,11 +277,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/guide': {
+      id: '/guide'
+      path: '/guide'
+      fullPath: '/guide'
+      preLoaderRoute: typeof GuideRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/watch': {
+      id: '/watch'
+      path: '/watch'
+      fullPath: '/watch'
+      preLoaderRoute: typeof WatchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin': {
@@ -202,11 +319,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminControlRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/_authenticated/admin/endpoints': {
+      id: '/_authenticated/admin/endpoints'
+      path: '/endpoints'
+      fullPath: '/admin/endpoints'
+      preLoaderRoute: typeof AuthenticatedAdminEndpointsRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/graphics': {
+      id: '/_authenticated/admin/graphics'
+      path: '/graphics'
+      fullPath: '/admin/graphics'
+      preLoaderRoute: typeof AuthenticatedAdminGraphicsRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/live': {
+      id: '/_authenticated/admin/live'
+      path: '/live'
+      fullPath: '/admin/live'
+      preLoaderRoute: typeof AuthenticatedAdminLiveRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
     '/_authenticated/admin/media': {
       id: '/_authenticated/admin/media'
       path: '/media'
       fullPath: '/admin/media'
       preLoaderRoute: typeof AuthenticatedAdminMediaRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/playlists': {
+      id: '/_authenticated/admin/playlists'
+      path: '/playlists'
+      fullPath: '/admin/playlists'
+      preLoaderRoute: typeof AuthenticatedAdminPlaylistsRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/schedule': {
+      id: '/_authenticated/admin/schedule'
+      path: '/schedule'
+      fullPath: '/admin/schedule'
+      preLoaderRoute: typeof AuthenticatedAdminScheduleRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/settings': {
+      id: '/_authenticated/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AuthenticatedAdminSettingsRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
     '/api/public/thumbnails/$': {
@@ -228,14 +387,26 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedAdminRouteRouteChildren {
   AuthenticatedAdminControlRoute: typeof AuthenticatedAdminControlRoute
+  AuthenticatedAdminEndpointsRoute: typeof AuthenticatedAdminEndpointsRoute
+  AuthenticatedAdminGraphicsRoute: typeof AuthenticatedAdminGraphicsRoute
+  AuthenticatedAdminLiveRoute: typeof AuthenticatedAdminLiveRoute
   AuthenticatedAdminMediaRoute: typeof AuthenticatedAdminMediaRoute
+  AuthenticatedAdminPlaylistsRoute: typeof AuthenticatedAdminPlaylistsRoute
+  AuthenticatedAdminScheduleRoute: typeof AuthenticatedAdminScheduleRoute
+  AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
 
 const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren =
   {
     AuthenticatedAdminControlRoute: AuthenticatedAdminControlRoute,
+    AuthenticatedAdminEndpointsRoute: AuthenticatedAdminEndpointsRoute,
+    AuthenticatedAdminGraphicsRoute: AuthenticatedAdminGraphicsRoute,
+    AuthenticatedAdminLiveRoute: AuthenticatedAdminLiveRoute,
     AuthenticatedAdminMediaRoute: AuthenticatedAdminMediaRoute,
+    AuthenticatedAdminPlaylistsRoute: AuthenticatedAdminPlaylistsRoute,
+    AuthenticatedAdminScheduleRoute: AuthenticatedAdminScheduleRoute,
+    AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
     AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   }
 
@@ -259,7 +430,9 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  GuideRoute: GuideRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  WatchRoute: WatchRoute,
   ApiPublicThumbnailsSplatRoute: ApiPublicThumbnailsSplatRoute,
   ApiPublicEngineV1SplatRoute: ApiPublicEngineV1SplatRoute,
 }

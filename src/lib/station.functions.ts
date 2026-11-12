@@ -86,7 +86,7 @@ export const completeMediaUpload = createServerFn({ method: "POST" })
     const head = await r2.headObject(row.storage_key);
     await context.supabase
       .from("media_assets")
-      .update({ upload_id: null, status: head.ok ? "ready" : "failed", file_size: head.size || undefined })
+      .update({ upload_id: null, status: head.ok ? "ready" : "failed", ...(head.size ? { file_size: head.size } : {}) })
       .eq("id", data.mediaId);
     return { ok: head.ok, size: head.size };
   });

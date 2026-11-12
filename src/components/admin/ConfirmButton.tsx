@@ -9,7 +9,7 @@ interface Props extends Omit<ButtonProps, "onClick"> {
   title: string;
   description: React.ReactNode;
   confirmLabel?: string;
-  onConfirm: () => void | Promise<void>;
+  onConfirm: () => unknown;
   destructive?: boolean;
   /** Require typing this word to confirm (for emergency actions). */
   typeToConfirm?: string;

@@ -16,7 +16,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 
-const NAV = [
+type NavTo = "/admin" | "/admin/control" | "/admin/live" | "/admin/schedule" | "/admin/playlists" | "/admin/media" | "/admin/graphics" | "/admin/endpoints" | "/admin/settings";
+interface NavItem { to: NavTo; label: string; icon: typeof LayoutDashboard; exact?: boolean }
+
+const NAV: { group: string; items: NavItem[] }[] = [
   { group: "Operations", items: [
     { to: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
     { to: "/admin/control", label: "Control Room", icon: Clapperboard },
@@ -30,7 +33,7 @@ const NAV = [
   { group: "Presentation", items: [{ to: "/admin/graphics", label: "Graphics", icon: Layers }] },
   { group: "Distribution", items: [{ to: "/admin/endpoints", label: "Streaming Endpoints", icon: Share2 }] },
   { group: "System", items: [{ to: "/admin/settings", label: "Settings", icon: Settings }] },
-] as const;
+];
 
 export function AdminShell({ children, onSignOut }: { children: React.ReactNode; onSignOut: () => void }) {
   const { channel, user, roles } = useStation();
@@ -84,7 +87,7 @@ export function AdminShell({ children, onSignOut }: { children: React.ReactNode;
             <div key={g.group} className="mb-2">
               {!collapsed && <div className="px-3 pb-1 pt-2 text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">{g.group}</div>}
               {g.items.map((item) => {
-                const active = "exact" in item && item.exact ? pathname === item.to || pathname === item.to + "/" : pathname.startsWith(item.to);
+                const active = item.exact ? pathname === item.to || pathname === item.to + "/" : pathname.startsWith(item.to);
                 const Icon = item.icon;
                 return (
                   <Link
@@ -156,7 +159,12 @@ export function AdminShell({ children, onSignOut }: { children: React.ReactNode;
         <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
       </div>
 
-      <CommandPalette open={palette} onOpenChange={setPalette} onNavigate={(to) => { setPalette(false); navigate({ to }); }} />
+      <CommandPalette
+        open={palette}
+        onOpenChange={setPalette}
+        onNavigate={(to) => { setPalette(false); navigate({ to }); }}
+        onOpenMedia={(title) => { setPalette(false); navigate({ to: "/admin/media", search: { q: title } }); }}
+      />
     </div>
   );
 }
@@ -196,7 +204,7 @@ function Notifications() {
   );
 }
 
-function CommandPalette({ open, onOpenChange, onNavigate }: { open: boolean; onOpenChange: (o: boolean) => void; onNavigate: (to: string) => void }) {
+function CommandPalette({ open, onOpenChange, onNavigate, onOpenMedia }: { open: boolean; onOpenChange: (o: boolean) => void; onNavigate: (to: NavTo) => void; onOpenMedia: (title: string) => void }) {
   const { channel } = useStation();
   const [q, setQ] = useState("");
   const media = useQuery({
@@ -221,7 +229,7 @@ function CommandPalette({ open, onOpenChange, onNavigate }: { open: boolean; onO
         {!!media.data?.length && (
           <CommandGroup heading="Media">
             {media.data.map((m) => (
-              <CommandItem key={m.id} value={`media-${m.title}-${m.id}`} onSelect={() => onNavigate(`/admin/media?q=${encodeURIComponent(m.title)}`)}>
+              <CommandItem key={m.id} value={`media-${m.title}-${m.id}`} onSelect={() => onOpenMedia(m.title)}>
                 <Film className="mr-2 size-4" />{m.title}<span className="ml-auto text-[10px] uppercase text-muted-foreground">{m.category}</span>
               </CommandItem>
             ))}
