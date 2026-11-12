@@ -8,6 +8,13 @@
       "when": 1794472864463,
       "tag": "0000_movie_max_core",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794472972349,
+      "tag": "0001_thumbnail_storage_policies",
+      "breakpoints": true
     }
   ]
 }
