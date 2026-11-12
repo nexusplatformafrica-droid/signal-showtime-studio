@@ -112,3 +112,18 @@ export function transitionAnimation(phase: CardPhase, tIn = "slide-left", tOut =
   const ease = tIn === "pop" ? "cubic-bezier(.34,1.56,.64,1)" : "cubic-bezier(.16,1,.3,1)";
   return `mmx-in-${tIn} ${ms}ms ${ease} both`;
 }
+
+export interface CardText { kicker: string; title: string; subtitle: string; time: string }
+
+/** The four lines a card shows, from its config. Empty title/time fall back to the next programme automatically. */
+export function cardTextFor(
+  c: { kicker?: string; title?: string; subtitle?: string; time_text?: string },
+  v: CardVars,
+): CardText {
+  return {
+    kicker: fillCardText(c.kicker ?? "UP NEXT", v),
+    title: fillCardText(c.title?.trim() ? c.title : "{title}", v),
+    subtitle: fillCardText(c.subtitle, v),
+    time: fillCardText(c.time_text ?? "{time}", v),
+  };
+}
