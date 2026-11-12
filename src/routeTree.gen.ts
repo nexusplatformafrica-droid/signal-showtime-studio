@@ -17,6 +17,7 @@ import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as AuthenticatedAdminControlRouteImport } from './routes/_authenticated/admin/control'
 import { Route as AuthenticatedAdminMediaRouteImport } from './routes/_authenticated/admin/media'
+import { Route as AuthenticatedAdminPlaylistsRouteImport } from './routes/_authenticated/admin/playlists'
 import { Route as AuthenticatedAdminScheduleRouteImport } from './routes/_authenticated/admin/schedule'
 import { Route as ApiPublicThumbnailsSplatRouteImport } from './routes/api/public/thumbnails/$'
 import { Route as ApiPublicEngineV1SplatRouteImport } from './routes/api/public/engine/v1/$'
@@ -61,6 +62,12 @@ const AuthenticatedAdminMediaRoute = AuthenticatedAdminMediaRouteImport.update({
   path: '/media',
   getParentRoute: () => AuthenticatedAdminRouteRoute,
 } as any)
+const AuthenticatedAdminPlaylistsRoute =
+  AuthenticatedAdminPlaylistsRouteImport.update({
+    id: '/playlists',
+    path: '/playlists',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
 const AuthenticatedAdminScheduleRoute =
   AuthenticatedAdminScheduleRouteImport.update({
     id: '/schedule',
@@ -86,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/admin/control': typeof AuthenticatedAdminControlRoute
   '/admin/media': typeof AuthenticatedAdminMediaRoute
+  '/admin/playlists': typeof AuthenticatedAdminPlaylistsRoute
   '/admin/schedule': typeof AuthenticatedAdminScheduleRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/thumbnails/$': typeof ApiPublicThumbnailsSplatRoute
@@ -97,6 +105,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/admin/control': typeof AuthenticatedAdminControlRoute
   '/admin/media': typeof AuthenticatedAdminMediaRoute
+  '/admin/playlists': typeof AuthenticatedAdminPlaylistsRoute
   '/admin/schedule': typeof AuthenticatedAdminScheduleRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/api/public/thumbnails/$': typeof ApiPublicThumbnailsSplatRoute
@@ -111,6 +120,7 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/_authenticated/admin/control': typeof AuthenticatedAdminControlRoute
   '/_authenticated/admin/media': typeof AuthenticatedAdminMediaRoute
+  '/_authenticated/admin/playlists': typeof AuthenticatedAdminPlaylistsRoute
   '/_authenticated/admin/schedule': typeof AuthenticatedAdminScheduleRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/thumbnails/$': typeof ApiPublicThumbnailsSplatRoute
@@ -125,6 +135,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin/control'
     | '/admin/media'
+    | '/admin/playlists'
     | '/admin/schedule'
     | '/admin/'
     | '/api/public/thumbnails/$'
@@ -136,6 +147,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/admin/control'
     | '/admin/media'
+    | '/admin/playlists'
     | '/admin/schedule'
     | '/admin'
     | '/api/public/thumbnails/$'
@@ -149,6 +161,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/_authenticated/admin/control'
     | '/_authenticated/admin/media'
+    | '/_authenticated/admin/playlists'
     | '/_authenticated/admin/schedule'
     | '/_authenticated/admin/'
     | '/api/public/thumbnails/$'
@@ -222,6 +235,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminMediaRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/_authenticated/admin/playlists': {
+      id: '/_authenticated/admin/playlists'
+      path: '/playlists'
+      fullPath: '/admin/playlists'
+      preLoaderRoute: typeof AuthenticatedAdminPlaylistsRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
     '/_authenticated/admin/schedule': {
       id: '/_authenticated/admin/schedule'
       path: '/schedule'
@@ -249,6 +269,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedAdminRouteRouteChildren {
   AuthenticatedAdminControlRoute: typeof AuthenticatedAdminControlRoute
   AuthenticatedAdminMediaRoute: typeof AuthenticatedAdminMediaRoute
+  AuthenticatedAdminPlaylistsRoute: typeof AuthenticatedAdminPlaylistsRoute
   AuthenticatedAdminScheduleRoute: typeof AuthenticatedAdminScheduleRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
@@ -257,6 +278,7 @@ const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren
   {
     AuthenticatedAdminControlRoute: AuthenticatedAdminControlRoute,
     AuthenticatedAdminMediaRoute: AuthenticatedAdminMediaRoute,
+    AuthenticatedAdminPlaylistsRoute: AuthenticatedAdminPlaylistsRoute,
     AuthenticatedAdminScheduleRoute: AuthenticatedAdminScheduleRoute,
     AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   }
