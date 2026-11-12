@@ -117,7 +117,7 @@ export function UpNextStudio({ config, vars, onChange, onUpload, onPlay }: Props
             </div>
             <div className="grid grid-cols-2 gap-2">
               {config.show_mode === "before_next" && <label className="block space-y-1"><span className="label-caps">Start (seconds before)</span><input type="number" min={5} max={3600} className="field" value={config.lead ?? 120} onChange={(e) => set({ lead: Math.max(5, +e.target.value) })} /></label>}
-              <label className="block space-y-1"><span className="label-caps">On screen for (s, 0 = until next)</span><input type="number" min={0} max={3600} className="field" value={config.duration ?? 10} onChange={(e) => set({ duration: Math.max(0, +e.target.value) })} /></label>
+              <label className="block space-y-1"><span className="label-caps">On screen for (s, 0 = {config.show_mode === "before_next" ? "until it starts" : "stays up"})</span><input type="number" min={0} max={3600} className="field" value={config.duration ?? 10} onChange={(e) => set({ duration: Math.max(0, +e.target.value) })} /></label>
             </div>
           </Step>
         </div>

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Upload } from "lucide-react";
@@ -10,9 +10,11 @@ import { useNow } from "@/hooks/use-station";
 import { PageHeader, EmptyState } from "@/components/admin/PageHeader";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { StatusChip } from "@/components/broadcast/status";
-import { GraphicsLayer } from "@/components/broadcast/GraphicsLayer";
+import { GraphicsLayer, type GraphicsReplay } from "@/components/broadcast/GraphicsLayer";
+import { UpNextStudio } from "@/components/admin/UpNextStudio";
 import { useWebPlayout } from "@/hooks/use-web-playout";
-import type { LiveOverlay } from "@/lib/graphics";
+import { nextWebEntry } from "@/lib/web-playout";
+import type { LiveOverlay, OverlayConfig } from "@/lib/graphics";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { formatTime } from "@/lib/broadcast";
@@ -22,18 +24,6 @@ import slate from "@/assets/standby-slate.jpg";
 export const Route = createFileRoute("/_authenticated/admin/graphics")({ component: GraphicsPage });
 
 type Overlay = Tables<"graphics_overlays">;
-interface OverlayConfig {
-  position?: string;
-  size?: number;
-  opacity?: number;
-  color?: string;
-  text?: string;
-  title?: string;
-  subtitle?: string;
-  speed?: number;
-  duration?: number;
-  logo_url?: string;
-}
 const POSITIONS = ["top-left", "top-center", "top-right", "bottom-left", "bottom-center", "bottom-right", "bottom"];
 const cfg = (o: Overlay): OverlayConfig => (o.config && typeof o.config === "object" && !Array.isArray(o.config) ? (o.config as OverlayConfig) : {});
 
@@ -44,6 +34,10 @@ function GraphicsPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Record<string, OverlayConfig>>({});
   const [enabled, setEnabled] = useState<Record<string, boolean>>({});
+  const [replay, setReplay] = useState<GraphicsReplay | null>(null);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const studioNow = useNow(15_000);
+  const { web } = useWebPlayout(null);
 
   const overlays = useQuery({
     queryKey: ["overlays", channel.id],
@@ -75,20 +69,34 @@ function GraphicsPage() {
     qc.invalidateQueries({ queryKey: ["overlays", channel.id] });
   }
 
-  async function uploadLogo(file: File) {
-    if (!/^image\/(png|jpeg|webp)$/.test(file.type) || file.size > 2_000_000) {
-      toast.error("Use a PNG, JPG or WebP under 2 MB");
+  /** Replay the active card's appear → hold → disappear → appear in the preview. */
+  function playTransition() {
+    if (!active) return;
+    const ms = Number(activeCfg.transition_ms) || 700;
+    timers.current.forEach(clearTimeout);
+    setReplay({ id: active.id, key: Date.now(), phase: "in" });
+    timers.current = [
+      setTimeout(() => setReplay((r) => r && { ...r, phase: "out" }), ms + 2200),
+      setTimeout(() => setReplay((r) => r && { ...r, key: Date.now(), phase: "in" }), ms * 2 + 3000),
+    ];
+  }
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+
+  async function uploadImage(file: File, field: "logo_url" | "image_url" = "logo_url") {
+    const max = field === "logo_url" ? 2_000_000 : 5_000_000;
+    if (!/^image\/(png|jpeg|webp)$/.test(file.type) || file.size > max) {
+      toast.error(`Use a PNG, JPG or WebP under ${max / 1_000_000} MB`);
       return;
     }
     const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
-    const path = `logos/${crypto.randomUUID()}.${ext}`;
+    const path = `${field === "logo_url" ? "logos" : "brand"}/${crypto.randomUUID()}.${ext}`;
     const { error } = await supabase.storage.from("media-thumbnails").upload(path, file, { contentType: file.type });
     if (error) {
       toast.error(error.message);
       return;
     }
-    setCfg({ logo_url: `/api/public/thumbnails/${path}` });
-    toast.success("Logo uploaded — save or publish to apply");
+    setCfg({ [field]: `/api/public/thumbnails/${path}` });
+    toast.success(`${field === "logo_url" ? "Logo" : "Picture"} uploaded — save or publish to apply`);
   }
 
   return (
@@ -114,7 +122,7 @@ function GraphicsPage() {
 
         <section className="panel">
           <div className="panel-header">Preview<span className="normal-case tracking-normal">exactly how it looks on air · drafts included</span></div>
-          <div className="p-2"><GraphicsPreview overlays={list} draft={draft} enabled={enabled} /></div>
+          <div className="p-2"><GraphicsPreview overlays={list} draft={draft} enabled={enabled} replay={replay} /></div>
         </section>
 
         <section className="panel h-fit">
@@ -124,7 +132,8 @@ function GraphicsPage() {
               <label className="block space-y-1"><span className="label-caps">Position</span><select className="field" value={activeCfg.position ?? "top-right"} onChange={(e) => setCfg({ position: e.target.value })}>{POSITIONS.map((p) => <option key={p}>{p}</option>)}</select></label>
               <label className="block space-y-1"><span className="label-caps">Size · {activeCfg.size ?? 20}% of width</span><input type="range" min={4} max={100} value={activeCfg.size ?? 20} onChange={(e) => setCfg({ size: +e.target.value })} className="w-full accent-program" /></label>
               <label className="block space-y-1"><span className="label-caps">Opacity · {Math.round((activeCfg.opacity ?? 1) * 100)}%</span><input type="range" min={0.1} max={1} step={0.05} value={activeCfg.opacity ?? 1} onChange={(e) => setCfg({ opacity: +e.target.value })} className="w-full accent-program" /></label>
-              {active.kind !== "clock" && active.kind !== "logo" && <label className="block space-y-1"><span className="label-caps">Accent colour</span><input type="color" className="h-8 w-full rounded-sm border border-input bg-inset" value={activeCfg.color ?? "#e5322d"} onChange={(e) => setCfg({ color: e.target.value })} /></label>}
+              {active.kind === "next_programme" && <p className="rounded-sm border border-border bg-inset p-2 text-xs text-muted-foreground">Design, text, picture, transitions and timing are in the <b className="text-foreground">branding studio</b> below.</p>}
+              {active.kind !== "clock" && active.kind !== "logo" && active.kind !== "next_programme" && <label className="block space-y-1"><span className="label-caps">Accent colour</span><input type="color" className="h-8 w-full rounded-sm border border-input bg-inset" value={activeCfg.color ?? "#e5322d"} onChange={(e) => setCfg({ color: e.target.value })} /></label>}
               {["ticker", "breaking_news", "on_air", "ad_banner", "station_id", "programme_title", "logo"].includes(active.kind) && (
                 <label className="block space-y-1"><span className="label-caps">{active.kind === "ticker" ? "Ticker text" : "Text"}</span><textarea className="field" rows={active.kind === "ticker" ? 3 : 1} value={activeCfg.text ?? ""} onChange={(e) => setCfg({ text: e.target.value })} maxLength={500} /></label>
               )}
@@ -135,13 +144,13 @@ function GraphicsPage() {
                   <label className="block space-y-1"><span className="label-caps">Subtitle line</span><input className="field" value={activeCfg.subtitle ?? ""} onChange={(e) => setCfg({ subtitle: e.target.value })} maxLength={120} /></label>
                 </>
               )}
-              {["now_showing", "next_programme", "lower_third", "station_id", "programme_title", "ad_banner"].includes(active.kind) && (
+              {["now_showing", "lower_third", "station_id", "programme_title", "ad_banner"].includes(active.kind) && (
                 <label className="block space-y-1"><span className="label-caps">Display duration (seconds, 0 = always)</span><input type="number" min={0} max={3600} className="field" value={activeCfg.duration ?? 0} onChange={(e) => setCfg({ duration: Math.max(0, +e.target.value) })} /></label>
               )}
               {active.kind === "logo" && (
                 <label className="flex h-8 cursor-pointer items-center justify-center gap-2 rounded-sm border border-dashed border-border text-xs hover:bg-accent">
                   <Upload className="size-3.5" />Upload logo image
-                  <input type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(e) => e.target.files?.[0] && uploadLogo(e.target.files[0])} />
+                  <input type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0])} />
                 </label>
               )}
               <ScheduleWindow overlay={active} />
@@ -149,6 +158,20 @@ function GraphicsPage() {
           ) : <EmptyState title="Select an overlay" />}
         </section>
       </div>
+      {active?.kind === "next_programme" && (
+        <fieldset disabled={!canEdit} className="px-3 pb-3">
+          <UpNextStudio
+            config={activeCfg}
+            vars={(() => {
+              const next = studioNow != null ? nextWebEntry(web?.bundle, studioNow) : null;
+              return { title: next?.title ?? "Next programme", startsAt: next ? Date.parse(next.starts_at) : (studioNow ?? 0) + 20 * 60_000, now: studioNow ?? 0, timezone: channel.timezone };
+            })()}
+            onChange={setCfg}
+            onUpload={(f) => uploadImage(f, "image_url")}
+            onPlay={playTransition}
+          />
+        </fieldset>
+      )}
     </div>
   );
 }
@@ -175,17 +198,18 @@ function ScheduleWindow({ overlay }: { overlay: Overlay }) {
   );
 }
 
-function GraphicsPreview({ overlays, draft, enabled }: { overlays: Overlay[]; draft: Record<string, OverlayConfig>; enabled: Record<string, boolean> }) {
+function GraphicsPreview({ overlays, draft, enabled, replay }: { overlays: Overlay[]; draft: Record<string, OverlayConfig>; enabled: Record<string, boolean>; replay: GraphicsReplay | null }) {
   const { channel } = useStation();
   const now = useNow(1000);
-  const { pick } = useWebPlayout(now);
+  const { pick, web } = useWebPlayout(now);
   if (now == null) return <div className="monitor" />;
+  const next = nextWebEntry(web?.bundle, now);
   // Preview shows every enabled overlay (ignoring timing) so each one can be positioned.
-  const items: LiveOverlay[] = overlays.filter((o) => enabled[o.id]).map((o) => ({ id: o.id, kind: o.kind as LiveOverlay["kind"], name: o.name, config: { ...(draft[o.id] ?? {}), duration: 0 }, show_from: null, show_until: null, published_at: null }));
+  const items: LiveOverlay[] = overlays.filter((o) => enabled[o.id]).map((o) => ({ id: o.id, kind: o.kind as LiveOverlay["kind"], name: o.name, config: { ...(draft[o.id] ?? {}), duration: 0, show_mode: "cycle" }, show_from: null, show_until: null, published_at: null }));
   return (
     <div className="monitor">
       <img src={slate} alt="" className="absolute inset-0 h-full w-full object-cover" />
-      <GraphicsLayer overlays={items} timezone={channel.timezone} ctx={{ now, live: true, title: pick?.title ?? "Programme title", nextTitle: "Next programme", programmeStartedAt: now }} />
+      <GraphicsLayer overlays={items} timezone={channel.timezone} replay={replay} ctx={{ now, live: true, title: pick?.title ?? "Programme title", nextTitle: next?.title ?? "Next programme", nextStartsAt: next ? Date.parse(next.starts_at) : now + 20 * 60_000, programmeStartedAt: now }} />
     </div>
   );
 }
