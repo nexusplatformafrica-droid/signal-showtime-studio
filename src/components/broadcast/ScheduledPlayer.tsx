@@ -38,6 +38,8 @@ export function ScheduledPlayer({ bundle, skewMs = 0, poster, controls = true, m
   const [volume, setVolume] = useState(0.8);
   const [blocked, setBlocked] = useState(false);
   const [fs, setFs] = useState(false);
+  const blockedRef = useRef(blocked);
+  blockedRef.current = blocked;
   const setState = (s: PlayerState) => { setStateRaw(s); stateCb.current?.(s); };
 
   useEffect(() => {
@@ -104,9 +106,6 @@ export function ScheduledPlayer({ bundle, skewMs = 0, poster, controls = true, m
       v.load();
     };
   }, []);
-
-  const blockedRef = useRef(blocked);
-  blockedRef.current = blocked;
 
   useEffect(() => {
     const v = videoRef.current;

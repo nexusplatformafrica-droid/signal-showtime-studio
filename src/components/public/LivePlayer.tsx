@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { HlsPlayer, type PlayerState } from "@/components/broadcast/HlsPlayer";
+import { ScheduledPlayer } from "@/components/broadcast/ScheduledPlayer";
 import { viewerHeartbeat } from "@/lib/public.functions";
+import type { PlayoutBundle } from "@/lib/web-playout";
 import slate from "@/assets/standby-slate.jpg";
 
 function deviceType(): "desktop" | "mobile" | "tablet" | "tv" | "unknown" {
@@ -12,15 +14,19 @@ function deviceType(): "desktop" | "mobile" | "tablet" | "tv" | "unknown" {
   return "desktop";
 }
 
-/** The single continuous channel player. Counts this viewer only while video is actually playing. */
-export function LivePlayer({ channelId, src, onAir, className }: { channelId: string; src: string | null; onAir: boolean; className?: string }) {
+/**
+ * The single continuous channel player. Uses the engine's live stream when it is on air,
+ * otherwise plays the published schedule directly on the website (`web`).
+ * Counts this viewer only while video is actually playing.
+ */
+export function LivePlayer({ channelId, src, onAir, web, className }: { channelId: string; src: string | null; onAir: boolean; web?: { bundle: PlayoutBundle; skewMs: number } | null | undefined; className?: string }) {
   const beat = useServerFn(viewerHeartbeat);
   const stateRef = useRef<PlayerState>("idle");
   const [sessionId] = useState(() => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : ""));
   const onState = useCallback((s: PlayerState) => { stateRef.current = s; }, []);
 
   useEffect(() => {
-    if (!sessionId || !src) return;
+    if (!sessionId || (!src && !web)) return;
     let last = Date.now();
     const tick = () => {
       const nowMs = Date.now();
@@ -32,7 +38,22 @@ export function LivePlayer({ channelId, src, onAir, className }: { channelId: st
     const first = setTimeout(tick, 5000);
     const t = setInterval(tick, 30000);
     return () => { clearTimeout(first); clearInterval(t); };
-  }, [sessionId, src, channelId, beat]);
+  }, [sessionId, src, web, channelId, beat]);
+
+  const offline = (
+    <div className="space-y-1">
+      <div className="wordmark text-2xl">MOVIE MAX</div>
+      <div className="label-caps">{onAir ? "Stream temporarily unavailable" : "The channel is currently off air"}</div>
+    </div>
+  );
+
+  if (!onAir && web) {
+    return (
+      <div className={className}>
+        <ScheduledPlayer bundle={web.bundle} skewMs={web.skewMs} poster={slate} onStateChange={onState} offlineLabel={offline} />
+      </div>
+    );
+  }
 
   return (
     <div className={className}>
@@ -41,12 +62,7 @@ export function LivePlayer({ channelId, src, onAir, className }: { channelId: st
         poster={slate}
         muted
         onStateChange={onState}
-        offlineLabel={
-          <div className="space-y-1">
-            <div className="wordmark text-2xl">MOVIE MAX</div>
-            <div className="label-caps">{onAir ? "Stream temporarily unavailable" : "The channel is currently off air"}</div>
-          </div>
-        }
+        offlineLabel={offline}
       />
     </div>
   );
