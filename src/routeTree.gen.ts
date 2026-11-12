@@ -16,6 +16,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as AuthenticatedAdminControlRouteImport } from './routes/_authenticated/admin/control'
+import { Route as AuthenticatedAdminMediaRouteImport } from './routes/_authenticated/admin/media'
 import { Route as ApiPublicThumbnailsSplatRouteImport } from './routes/api/public/thumbnails/$'
 import { Route as ApiPublicEngineV1SplatRouteImport } from './routes/api/public/engine/v1/$'
 
@@ -54,6 +55,11 @@ const AuthenticatedAdminControlRoute =
     path: '/control',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
+const AuthenticatedAdminMediaRoute = AuthenticatedAdminMediaRouteImport.update({
+  id: '/media',
+  path: '/media',
+  getParentRoute: () => AuthenticatedAdminRouteRoute,
+} as any)
 const ApiPublicThumbnailsSplatRoute =
   ApiPublicThumbnailsSplatRouteImport.update({
     id: '/api/public/thumbnails/$',
@@ -72,6 +78,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/admin/control': typeof AuthenticatedAdminControlRoute
+  '/admin/media': typeof AuthenticatedAdminMediaRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/thumbnails/$': typeof ApiPublicThumbnailsSplatRoute
   '/api/public/engine/v1/$': typeof ApiPublicEngineV1SplatRoute
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/admin/control': typeof AuthenticatedAdminControlRoute
+  '/admin/media': typeof AuthenticatedAdminMediaRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/api/public/thumbnails/$': typeof ApiPublicThumbnailsSplatRoute
   '/api/public/engine/v1/$': typeof ApiPublicEngineV1SplatRoute
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/_authenticated/admin/control': typeof AuthenticatedAdminControlRoute
+  '/_authenticated/admin/media': typeof AuthenticatedAdminMediaRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/thumbnails/$': typeof ApiPublicThumbnailsSplatRoute
   '/api/public/engine/v1/$': typeof ApiPublicEngineV1SplatRoute
@@ -105,6 +114,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/admin'
     | '/admin/control'
+    | '/admin/media'
     | '/admin/'
     | '/api/public/thumbnails/$'
     | '/api/public/engine/v1/$'
@@ -114,6 +124,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/admin/control'
+    | '/admin/media'
     | '/admin'
     | '/api/public/thumbnails/$'
     | '/api/public/engine/v1/$'
@@ -125,6 +136,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/_authenticated/admin'
     | '/_authenticated/admin/control'
+    | '/_authenticated/admin/media'
     | '/_authenticated/admin/'
     | '/api/public/thumbnails/$'
     | '/api/public/engine/v1/$'
@@ -190,6 +202,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminControlRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/_authenticated/admin/media': {
+      id: '/_authenticated/admin/media'
+      path: '/media'
+      fullPath: '/admin/media'
+      preLoaderRoute: typeof AuthenticatedAdminMediaRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
     '/api/public/thumbnails/$': {
       id: '/api/public/thumbnails/$'
       path: '/api/public/thumbnails/$'
@@ -209,12 +228,14 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedAdminRouteRouteChildren {
   AuthenticatedAdminControlRoute: typeof AuthenticatedAdminControlRoute
+  AuthenticatedAdminMediaRoute: typeof AuthenticatedAdminMediaRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
 
 const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren =
   {
     AuthenticatedAdminControlRoute: AuthenticatedAdminControlRoute,
+    AuthenticatedAdminMediaRoute: AuthenticatedAdminMediaRoute,
     AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   }
 

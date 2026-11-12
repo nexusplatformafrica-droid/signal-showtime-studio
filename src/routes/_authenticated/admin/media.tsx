@@ -46,7 +46,8 @@ function MediaLibrary() {
 
   useEffect(() => setPage(0), [q, category, statusF, folder, sort]);
 
-  const storage = useQuery({ queryKey: ["storage-status"], queryFn: useServerFn(getStorageStatus) });
+  const storageFn = useServerFn(getStorageStatus);
+  const storage = useQuery({ queryKey: ["storage-status"], queryFn: () => storageFn() });
 
   const folders = useQuery({
     queryKey: ["media-folders", channel.id],
