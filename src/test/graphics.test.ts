@@ -65,3 +65,38 @@ describe("up next branding", () => {
     expect(cardTextFor({ title: "My own name", kicker: "COMING UP", time_text: "" }, v).title).toBe("My own name");
   });
 });
+
+import { headlineIndex, newsTextFor } from "@/lib/news-cards";
+
+describe("news lower third", () => {
+  const pub = "2026-11-12T11:00:00Z";
+  const at = (s: number) => ({ ...ctx(0), now: Date.parse(pub) + s * 1000 });
+  it("shows once for its duration after publishing", () => {
+    const o = ov("lower_third", { duration: 20, show_mode: "once" }, { published_at: pub });
+    expect(isOverlayVisible(o, at(10))).toBe(true);
+    expect(isOverlayVisible(o, at(25))).toBe(false);
+    expect(isOverlayVisible(o, at(605))).toBe(false);
+  });
+  it("repeats every N minutes for its duration when set to repeat", () => {
+    const o = ov("lower_third", { duration: 20, show_mode: "repeat", every: 5 }, { published_at: pub });
+    expect(isOverlayVisible(o, at(10))).toBe(true);
+    expect(isOverlayVisible(o, at(100))).toBe(false);
+    expect(isOverlayVisible(o, at(305))).toBe(true);
+    expect(overlayRemainingMs(o, at(305))).toBe(15_000);
+  });
+  it("stays up when the duration is 0", () => {
+    expect(isOverlayVisible(ov("lower_third", { duration: 0 }, { published_at: pub }), at(99_999))).toBe(true);
+  });
+  it("takes turns between headlines, the same for every viewer", () => {
+    expect(headlineIndex(3, 0, 8)).toBe(0);
+    expect(headlineIndex(3, 8_000, 8)).toBe(1);
+    expect(headlineIndex(3, 24_000, 8)).toBe(0);
+    const t = newsTextFor({ title: "First story\n\nSecond story", rotate: 10 }, 10_000, "Africa/Kampala");
+    expect(t.headline).toBe("Second story");
+  });
+  it("fills {clock} with the channel's local time", () => {
+    const t = newsTextFor({}, Date.parse("2026-11-12T19:00:00Z"), "Africa/Kampala");
+    expect(t.time).toBe("10:00 PM");
+    expect(t.kicker).toBe("BREAKING NEWS");
+  });
+});

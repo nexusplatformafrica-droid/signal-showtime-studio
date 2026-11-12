@@ -3,6 +3,8 @@ import { formatClock } from "@/lib/broadcast";
 import { isOverlayVisible, overlayRemainingMs, tickerSeconds, type GraphicsContext, type LiveOverlay } from "@/lib/graphics";
 import { cardPhase, cardTextFor, type CardPhase } from "@/lib/brand-cards";
 import { BrandCard } from "@/components/broadcast/BrandCard";
+import { NewsCard } from "@/components/broadcast/NewsCard";
+import { newsTextFor } from "@/lib/news-cards";
 import { cn } from "@/lib/utils";
 
 const pos = (p?: string) => {
@@ -53,6 +55,11 @@ export function GraphicsLayer({ overlays, ctx, timezone, className, replay }: { 
           const text = cardTextFor(c, { title: ctx.nextTitle ?? "", startsAt: ctx.nextStartsAt ?? null, now: ctx.now, timezone });
           return <div key={`${o.id}:${rp?.key ?? ""}`} style={{ opacity: c.opacity ?? 1 }}><BrandCard config={c} text={text} phase={phase} /></div>;
         }
+        if (o.kind === "lower_third") {
+          const rp = replay?.id === o.id ? replay : null;
+          const phase = rp ? rp.phase : cardPhase(overlayRemainingMs(o, ctx), Number(c.transition_ms) || 700);
+          return <div key={`${o.id}:${rp?.key ?? ""}`} style={{ opacity: c.opacity ?? 1 }}><NewsCard config={c} text={newsTextFor(c, ctx.now, timezone)} phase={phase} /></div>;
+        }
         const style: React.CSSProperties = { opacity: c.opacity ?? 1, width: BARS.has(o.kind) ? "94cqw" : o.kind === "logo" ? `${c.size ?? 8}cqw` : undefined, maxWidth: `${Math.max(c.size ?? 30, 30)}cqw` };
         return (
           <div key={o.id} style={style}>
@@ -63,12 +70,6 @@ export function GraphicsLayer({ overlays, ctx, timezone, className, replay }: { 
               <div className="animate-in fade-in slide-in-from-left-4 bg-inset/90" style={fs}>
                 <div className="px-[0.6em] py-[0.2em] text-[0.7em] font-bold uppercase tracking-widest text-program-foreground" style={accent}>Now showing</div>
                 <div className="max-w-[40cqw] truncate px-[0.6em] py-[0.3em] font-semibold">{ctx.title}</div>
-              </div>
-            )}
-            {o.kind === "lower_third" && (
-              <div className="animate-in fade-in slide-in-from-left-4" style={fs}>
-                <div className="px-[0.6em] py-[0.25em] font-bold text-program-foreground" style={accent}>{c.title || "Name"}</div>
-                <div className="bg-inset/90 px-[0.6em] py-[0.2em] text-[0.8em]">{c.subtitle}</div>
               </div>
             )}
             {(o.kind === "ad_banner" || o.kind === "station_id" || o.kind === "countdown") && <span className="inline-block bg-inset/90 px-[0.6em] py-[0.3em] font-semibold" style={fs}>{c.text || o.name}</span>}

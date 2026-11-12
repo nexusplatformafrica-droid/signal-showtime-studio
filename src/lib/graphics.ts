@@ -28,8 +28,13 @@ export interface OverlayConfig {
   transition_out?: string | undefined;
   transition_ms?: number | undefined;
   /** "cycle" = after "now showing", every 10 minutes; "before_next" = `lead` seconds before the next programme starts. */
-  show_mode?: "cycle" | "before_next" | undefined;
+  show_mode?: "cycle" | "before_next" | "once" | "repeat" | undefined;
   lead?: number | undefined;
+  /** News lower third: logo-box text, rotate headlines every N s, scroll the description line, repeat every N minutes. */
+  badge?: string | undefined;
+  rotate?: number | undefined;
+  scroll?: boolean | undefined;
+  every?: number | undefined;
 }
 
 export interface LiveOverlay {
@@ -87,14 +92,22 @@ export function isOverlayVisible(o: LiveOverlay, ctx: GraphicsContext): boolean 
       // Shown right after "now showing" so they never overlap.
       return ctx.live && inCycle(sinceStart, 1);
     case "lower_third":
-      // Once, for `duration` seconds after it is published (0 = stays up).
-      return dur === 0 || (sincePublish >= 0 && sincePublish < dur);
+      if (dur === 0) return true;
+      if (o.config.show_mode === "repeat") return sincePublish >= 0 && sincePublish % repeatPeriod(o) < dur;
+      // Once, for `duration` seconds after it is published.
+      return sincePublish >= 0 && sincePublish < dur;
     case "ad_banner":
     case "station_id":
       return inCycle(sincePublish);
     default:
       return true;
   }
+}
+
+/** Seconds between repeats of a news lower third (at least its own duration). */
+function repeatPeriod(o: LiveOverlay): number {
+  const dur = Math.max(0, Number(o.config.duration) || 0);
+  return Math.max(dur + 1, (Number(o.config.every) || 10) * 60);
 }
 
 /** "Before next" window: from `lead` s before the next start, for `duration` s (0 = until it starts). Returns ms left, or null when outside. */
@@ -115,7 +128,12 @@ export function overlayRemainingMs(o: LiveOverlay, ctx: GraphicsContext): number
   const slot = o.kind === "next_programme" ? 1 : 0;
   let since: number | null = null;
   if (o.kind === "next_programme" || o.kind === "now_showing" || o.kind === "programme_title") since = ctx.programmeStartedAt != null ? (ctx.now - ctx.programmeStartedAt) / 1000 : null;
-  else if (o.kind === "lower_third") return o.published_at ? Math.max(0, dur * 1000 - (ctx.now - Date.parse(o.published_at))) : null;
+  else if (o.kind === "lower_third") {
+    if (!o.published_at) return null;
+    const since = (ctx.now - Date.parse(o.published_at)) / 1000;
+    const t = o.config.show_mode === "repeat" ? since % repeatPeriod(o) : since;
+    return Math.max(0, (dur - t) * 1000);
+  }
   else if (o.kind === "ad_banner" || o.kind === "station_id") since = o.published_at ? (ctx.now - Date.parse(o.published_at)) / 1000 : 0;
   else return null;
   if (since == null) return null;
