@@ -12,6 +12,8 @@
 - [x] Wowza connected as streaming provider (destination + secure relay link saved)
 - [x] Downloadable playout engine (public/engine/movie-max-engine.mjs) + setup guide in Settings → Playout engine
 - [x] Website plays the published schedule itself (LIVE, in sync for all viewers) — no extra server needed for the website
+- [x] Real on-screen graphics (published state only) on website + /output page; OBS → Wowza guide in Streaming Endpoints
+- [ ] Send /output to Wowza with OBS on an always-on computer (needs user's computer + Wowza Live Broadcast password)
 - [ ] Optional: run the engine on a 24/7 server with the Wowza live password, then verify the Wowza link for apps/TV boxes (needs user's server + Wowza password; site must be published)
 - [ ] Phase 2: Advertisement campaigns & commercial breaks manager
 - [ ] Phase 2: Viewer management & analytics (reports, CSV/PDF export)
