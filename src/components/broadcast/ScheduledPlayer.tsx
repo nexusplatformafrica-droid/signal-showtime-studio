@@ -14,6 +14,10 @@ interface Props {
   className?: string;
   offlineLabel?: React.ReactNode;
   onStateChange?: (s: PlayerState) => void;
+  /** Drawn over the picture (graphics), inside the full-screen area. */
+  children?: React.ReactNode;
+  /** Clicking anywhere on the picture turns the sound on (used where there are no controls). */
+  clickForSound?: boolean;
 }
 
 const DRIFT_LIMIT_S = 4;
@@ -22,7 +26,7 @@ const DRIFT_LIMIT_S = 4;
  * Plays the published schedule straight from the media files, locked to the channel clock.
  * Viewers can't pause or seek — like TV, everyone sees the same moment of the programme.
  */
-export function ScheduledPlayer({ bundle, skewMs = 0, poster, controls = true, muted: mutedInit = true, className, offlineLabel, onStateChange }: Props) {
+export function ScheduledPlayer({ bundle, skewMs = 0, poster, controls = true, muted: mutedInit = true, className, offlineLabel, onStateChange, children, clickForSound = false }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const loaded = useRef<{ mediaId: string; key: string } | null>(null);
@@ -47,7 +51,12 @@ export function ScheduledPlayer({ bundle, skewMs = 0, poster, controls = true, m
     if (!v) return;
     let errorUntil = 0;
     const clock = () => Date.now() + skewRef.current;
-    const play = () => v.play().then(() => setBlocked(false)).catch(() => setBlocked(true));
+    const play = () =>
+      v.play().then(() => setBlocked(false)).catch(() => {
+        // Browsers block autoplay with sound: fall back to muted so the picture still runs.
+        if (!v.muted) { v.muted = true; setMuted(true); return v.play().then(() => setBlocked(false)).catch(() => setBlocked(true)); }
+        setBlocked(true);
+      });
     const seekToClock = () => {
       const p = pickWebProgramme(bundleRef.current, clock());
       if (!p || loaded.current?.mediaId !== p.media.id) return;
@@ -129,8 +138,9 @@ export function ScheduledPlayer({ bundle, skewMs = 0, poster, controls = true, m
   const showOverlay = state === "offline" || state === "error" || state === "loading";
 
   return (
-    <div ref={wrapRef} className={cn("group relative h-full w-full overflow-hidden bg-inset", className)}>
+    <div ref={wrapRef} className={cn("group relative h-full w-full overflow-hidden bg-inset", className)} onClick={clickForSound && muted ? start : undefined}>
       <video ref={videoRef} className="h-full w-full object-contain" playsInline poster={poster} muted={muted} preload="auto" disablePictureInPicture />
+      {state !== "offline" && state !== "error" && children}
       {showOverlay && (
         <div className="absolute inset-0 flex items-center justify-center">
           {poster && <img src={poster} alt="" className="absolute inset-0 h-full w-full object-cover opacity-40" />}

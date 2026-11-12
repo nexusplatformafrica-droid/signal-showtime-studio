@@ -12,6 +12,7 @@ import { detectScheduleIssues, findNowNext, formatBytes, formatDate, formatDurat
 import { Metric, OnAirBadge, StatusChip, Tally } from "@/components/broadcast/status";
 import { HlsPlayer } from "@/components/broadcast/HlsPlayer";
 import { ScheduledPlayer } from "@/components/broadcast/ScheduledPlayer";
+import { LiveGraphics } from "@/components/broadcast/LiveGraphics";
 import { useWebPlayout } from "@/hooks/use-web-playout";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { Button } from "@/components/ui/button";
@@ -118,7 +119,7 @@ function Overview() {
               {onAir && channel.hls_url ? (
                 <HlsPlayer src={playbackUrl(channel.hls_url, channel.slug)} poster={slate} controls={false} />
               ) : webLive && web ? (
-                <ScheduledPlayer bundle={web.bundle} skewMs={web.skewMs} poster={slate} controls={false} />
+                <ScheduledPlayer bundle={web.bundle} skewMs={web.skewMs} poster={slate} controls={false}><LiveGraphics bundle={web.bundle} skewMs={web.skewMs} /></ScheduledPlayer>
               ) : (
                 <div className="absolute inset-0">
                   <img src={slate} alt="" className="h-full w-full object-cover opacity-30" />

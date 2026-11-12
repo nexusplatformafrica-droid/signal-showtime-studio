@@ -286,6 +286,15 @@
 .animate-ticker {
   animation: ticker-scroll var(--ticker-duration, 20s) linear infinite;
 }
+/* Broadcast crawl: enters from the right edge of the bar and leaves fully on the left. */
+@keyframes ticker-crawl {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
+}
+.animate-crawl {
+  padding-left: 100%;
+  animation: ticker-crawl var(--ticker-duration, 20s) linear infinite;
+}
 
 /* Google sign-in button — Google brand guideline colours (dark theme) */
 .google-btn {

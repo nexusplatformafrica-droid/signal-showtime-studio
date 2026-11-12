@@ -79,7 +79,7 @@ function Bar({ o, fs }: { o: LiveOverlay; fs: React.CSSProperties }) {
     <div className="flex items-stretch overflow-hidden bg-inset/90" style={fs}>
       <span className="relative z-10 shrink-0 px-[0.6em] py-[0.3em] font-bold uppercase text-program-foreground" style={accent}>MOVIE MAX</span>
       <span className="relative flex-1 overflow-hidden whitespace-nowrap py-[0.3em]">
-        <span className="animate-ticker inline-block" style={{ ["--ticker-duration" as string]: `${tickerSeconds(text, c.speed)}s` }}>{text}</span>
+        <span className="animate-crawl inline-block" style={{ ["--ticker-duration" as string]: `${tickerSeconds(text, c.speed)}s` }}>{text}</span>
       </span>
     </div>
   );

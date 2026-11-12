@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { HlsPlayer, type PlayerState } from "@/components/broadcast/HlsPlayer";
 import { ScheduledPlayer } from "@/components/broadcast/ScheduledPlayer";
+import { LiveGraphics } from "@/components/broadcast/LiveGraphics";
 import { viewerHeartbeat } from "@/lib/public.functions";
 import type { PlayoutBundle } from "@/lib/web-playout";
 import slate from "@/assets/standby-slate.jpg";
@@ -50,7 +51,9 @@ export function LivePlayer({ channelId, src, onAir, web, className }: { channelI
   if (!onAir && web) {
     return (
       <div className={className}>
-        <ScheduledPlayer bundle={web.bundle} skewMs={web.skewMs} poster={slate} onStateChange={onState} offlineLabel={offline} />
+        <ScheduledPlayer bundle={web.bundle} skewMs={web.skewMs} poster={slate} onStateChange={onState} offlineLabel={offline}>
+          <LiveGraphics bundle={web.bundle} skewMs={web.skewMs} />
+        </ScheduledPlayer>
       </div>
     );
   }
