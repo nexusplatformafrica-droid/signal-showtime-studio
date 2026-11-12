@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, CalendarRange, Clapperboard, Radio, RotateCcw, Siren, Upload, PlayCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { playbackUrl } from "@/lib/stream-url";
 import { useStation } from "@/components/admin/station-context";
 import { useBroadcastStatus, useNow, useRealtimeInvalidate } from "@/hooks/use-station";
 import { useMediaIndex, useScheduleRange } from "@/hooks/use-schedule";
@@ -109,7 +110,7 @@ function Overview() {
           <div className="grid gap-0 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
             <div className="monitor m-2 md:mr-0" data-tally={onAir ? "program" : undefined}>
               {onAir && channel.hls_url ? (
-                <HlsPlayer src={channel.hls_url} poster={slate} controls={false} />
+                <HlsPlayer src={playbackUrl(channel.hls_url, channel.slug)} poster={slate} controls={false} />
               ) : (
                 <div className="absolute inset-0">
                   <img src={slate} alt="" className="h-full w-full object-cover opacity-30" />

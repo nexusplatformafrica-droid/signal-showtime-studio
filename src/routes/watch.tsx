@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { publicStationQuery } from "@/components/public/station-query";
+import { playbackUrl } from "@/lib/stream-url";
 import { LivePlayer } from "@/components/public/LivePlayer";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { OnAirBadge } from "@/components/broadcast/status";
@@ -41,7 +42,7 @@ function Watch() {
       </div>
       <div className="flex flex-1 items-center justify-center p-0 md:p-4">
         <div className="monitor w-full max-w-[min(100%,calc((100vh-8rem)*16/9))]">
-          {ch && <LivePlayer channelId={ch.id} src={ch.hls_url} onAir={onAir} className="absolute inset-0" />}
+          {ch && <LivePlayer channelId={ch.id} src={playbackUrl(ch.hls_url, ch.slug)} onAir={onAir} className="absolute inset-0" />}
         </div>
       </div>
       {next && <div className="border-t border-border/70 bg-background px-4 py-2 text-sm text-muted-foreground">Up next <span className="timecode text-foreground">{formatTime(next.starts_at, tz)}</span> · <span className="text-foreground">{next.title}</span></div>}
