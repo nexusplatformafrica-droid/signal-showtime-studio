@@ -37,3 +37,5 @@ use the editor.
 - Permissions are enforced by database policies using `has_any_role`; `src/lib/permissions.ts` mirrors them only to enable/disable UI controls.
 - Store timestamps in UTC and convert with the channel timezone helpers in src/lib/broadcast.ts (default Africa/Kampala).
 - Public site pages use the `theme-public` token scope; the admin uses the default dark broadcast tokens in src/styles.css.
+- Players get their URL from `playbackUrl` (src/lib/stream-url.ts): http-only HLS origins are served through the folder-locked relay `/api/public/hls/{slug}/*` because https pages block mixed content; never turn it into an open proxy.
+- The engine's push destination lives in `stream_destinations` (staff-only RLS), not `channels`, because `channels` is publicly readable and publish details must stay private.
