@@ -35,7 +35,14 @@ export interface OverlayConfig {
   rotate?: number | undefined;
   scroll?: boolean | undefined;
   every?: number | undefined;
+  /** Ticker / breaking / pop-up kits: small tag, icon name and ticker separator. */
+  tag?: string | undefined;
+  icon?: string | undefined;
+  sep?: string | undefined;
 }
+
+/** Graphics the operator times themselves: stay up (duration 0), once after publishing, or repeat. */
+export const OPERATOR_TIMED = new Set<OverlayKind>(["lower_third", "breaking_news", "ticker", "ad_banner"]);
 
 export interface LiveOverlay {
   id: string;
@@ -92,16 +99,23 @@ export function isOverlayVisible(o: LiveOverlay, ctx: GraphicsContext): boolean 
       // Shown right after "now showing" so they never overlap.
       return ctx.live && inCycle(sinceStart, 1);
     case "lower_third":
-      if (dur === 0) return true;
-      if (o.config.show_mode === "repeat") return sincePublish >= 0 && sincePublish % repeatPeriod(o) < dur;
-      // Once, for `duration` seconds after it is published.
-      return sincePublish >= 0 && sincePublish < dur;
+    case "breaking_news":
+    case "ticker":
     case "ad_banner":
+      if (dur === 0) return true;
+      if (repeats(o)) return sincePublish >= 0 && sincePublish % repeatPeriod(o) < dur;
+      // Once, for `duration` seconds after it is published (or put on air).
+      return sincePublish >= 0 && sincePublish < dur;
     case "station_id":
       return inCycle(sincePublish);
     default:
       return true;
   }
+}
+
+/** Pop-up cards saved before timing options existed kept repeating every 10 minutes. */
+function repeats(o: LiveOverlay) {
+  return o.config.show_mode === "repeat" || (o.kind === "ad_banner" && !o.config.show_mode);
 }
 
 /** Seconds between repeats of a news lower third (at least its own duration). */
@@ -128,13 +142,13 @@ export function overlayRemainingMs(o: LiveOverlay, ctx: GraphicsContext): number
   const slot = o.kind === "next_programme" ? 1 : 0;
   let since: number | null = null;
   if (o.kind === "next_programme" || o.kind === "now_showing" || o.kind === "programme_title") since = ctx.programmeStartedAt != null ? (ctx.now - ctx.programmeStartedAt) / 1000 : null;
-  else if (o.kind === "lower_third") {
+  else if (OPERATOR_TIMED.has(o.kind)) {
     if (!o.published_at) return null;
     const since = (ctx.now - Date.parse(o.published_at)) / 1000;
-    const t = o.config.show_mode === "repeat" ? since % repeatPeriod(o) : since;
+    const t = repeats(o) ? since % repeatPeriod(o) : since;
     return Math.max(0, (dur - t) * 1000);
   }
-  else if (o.kind === "ad_banner" || o.kind === "station_id") since = o.published_at ? (ctx.now - Date.parse(o.published_at)) / 1000 : 0;
+  else if (o.kind === "station_id") since = o.published_at ? (ctx.now - Date.parse(o.published_at)) / 1000 : 0;
   else return null;
   if (since == null) return null;
   const t = since % GRAPHICS_CYCLE_S;
