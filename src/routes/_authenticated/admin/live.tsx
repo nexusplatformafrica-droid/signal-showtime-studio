@@ -16,14 +16,11 @@ import { StatusChip, Tally } from "@/components/broadcast/status";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatTime, isEngineOnline } from "@/lib/broadcast";
+import { copyText } from "@/lib/clipboard";
 
 export const Route = createFileRoute("/_authenticated/admin/live")({ component: LivePage });
 
 type LiveInput = Tables<"live_inputs">;
-
-export function copyText(text: string, label = "Copied") {
-  navigator.clipboard.writeText(text).then(() => toast.success(label), () => toast.error("Could not copy"));
-}
 
 function LivePage() {
   const { channel, can } = useStation();
