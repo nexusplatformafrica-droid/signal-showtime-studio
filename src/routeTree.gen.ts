@@ -25,6 +25,7 @@ import { Route as AuthenticatedAdminMediaRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAdminPlaylistsRouteImport } from './routes/_authenticated/admin/playlists'
 import { Route as AuthenticatedAdminScheduleRouteImport } from './routes/_authenticated/admin/schedule'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin/settings'
+import { Route as ApiPublicHlsSplatRouteImport } from './routes/api/public/hls/$'
 import { Route as ApiPublicThumbnailsSplatRouteImport } from './routes/api/public/thumbnails/$'
 import { Route as ApiPublicEngineV1SplatRouteImport } from './routes/api/public/engine/v1/$'
 
@@ -113,6 +114,11 @@ const AuthenticatedAdminSettingsRoute =
     path: '/settings',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
+const ApiPublicHlsSplatRoute = ApiPublicHlsSplatRouteImport.update({
+  id: '/api/public/hls/$',
+  path: '/api/public/hls/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicThumbnailsSplatRoute =
   ApiPublicThumbnailsSplatRouteImport.update({
     id: '/api/public/thumbnails/$',
@@ -141,6 +147,7 @@ export interface FileRoutesByFullPath {
   '/admin/schedule': typeof AuthenticatedAdminScheduleRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
+  '/api/public/hls/$': typeof ApiPublicHlsSplatRoute
   '/api/public/thumbnails/$': typeof ApiPublicThumbnailsSplatRoute
   '/api/public/engine/v1/$': typeof ApiPublicEngineV1SplatRoute
 }
@@ -159,6 +166,7 @@ export interface FileRoutesByTo {
   '/admin/schedule': typeof AuthenticatedAdminScheduleRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
+  '/api/public/hls/$': typeof ApiPublicHlsSplatRoute
   '/api/public/thumbnails/$': typeof ApiPublicThumbnailsSplatRoute
   '/api/public/engine/v1/$': typeof ApiPublicEngineV1SplatRoute
 }
@@ -180,6 +188,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/schedule': typeof AuthenticatedAdminScheduleRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/api/public/hls/$': typeof ApiPublicHlsSplatRoute
   '/api/public/thumbnails/$': typeof ApiPublicThumbnailsSplatRoute
   '/api/public/engine/v1/$': typeof ApiPublicEngineV1SplatRoute
 }
@@ -201,6 +210,7 @@ export interface FileRouteTypes {
     | '/admin/schedule'
     | '/admin/settings'
     | '/admin/'
+    | '/api/public/hls/$'
     | '/api/public/thumbnails/$'
     | '/api/public/engine/v1/$'
   fileRoutesByTo: FileRoutesByTo
@@ -219,6 +229,7 @@ export interface FileRouteTypes {
     | '/admin/schedule'
     | '/admin/settings'
     | '/admin'
+    | '/api/public/hls/$'
     | '/api/public/thumbnails/$'
     | '/api/public/engine/v1/$'
   id:
@@ -239,6 +250,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/schedule'
     | '/_authenticated/admin/settings'
     | '/_authenticated/admin/'
+    | '/api/public/hls/$'
     | '/api/public/thumbnails/$'
     | '/api/public/engine/v1/$'
   fileRoutesById: FileRoutesById
@@ -250,6 +262,7 @@ export interface RootRouteChildren {
   GuideRoute: typeof GuideRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   WatchRoute: typeof WatchRoute
+  ApiPublicHlsSplatRoute: typeof ApiPublicHlsSplatRoute
   ApiPublicThumbnailsSplatRoute: typeof ApiPublicThumbnailsSplatRoute
   ApiPublicEngineV1SplatRoute: typeof ApiPublicEngineV1SplatRoute
 }
@@ -368,6 +381,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminSettingsRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/api/public/hls/$': {
+      id: '/api/public/hls/$'
+      path: '/api/public/hls/$'
+      fullPath: '/api/public/hls/$'
+      preLoaderRoute: typeof ApiPublicHlsSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/thumbnails/$': {
       id: '/api/public/thumbnails/$'
       path: '/api/public/thumbnails/$'
@@ -433,6 +453,7 @@ const rootRouteChildren: RootRouteChildren = {
   GuideRoute: GuideRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   WatchRoute: WatchRoute,
+  ApiPublicHlsSplatRoute: ApiPublicHlsSplatRoute,
   ApiPublicThumbnailsSplatRoute: ApiPublicThumbnailsSplatRoute,
   ApiPublicEngineV1SplatRoute: ApiPublicEngineV1SplatRoute,
 }

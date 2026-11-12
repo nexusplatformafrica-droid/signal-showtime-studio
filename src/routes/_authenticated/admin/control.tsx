@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { FastForward, Pause, Play, Radio, RotateCcw, Siren, Square, Tv, Unplug, ArrowRightLeft, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { playbackUrl } from "@/lib/stream-url";
 import { useStation } from "@/components/admin/station-context";
 import { useBroadcastStatus, useNow, useRealtimeInvalidate } from "@/hooks/use-station";
 import { useScheduleRange } from "@/hooks/use-schedule";
@@ -154,7 +155,7 @@ function ControlRoom() {
             <section className="panel">
               <div className="panel-header"><span className="flex items-center gap-2"><Tally tone={onAir ? "program" : "off"} pulse={onAir} />Program</span><OnAirBadge onAir={onAir} engineOnline={online} /></div>
               <div className="monitor m-2" data-tally={onAir ? "program" : undefined}>
-                {onAir && channel.hls_url ? <HlsPlayer src={channel.hls_url} poster={slate} /> : (
+                {onAir && channel.hls_url ? <HlsPlayer src={playbackUrl(channel.hls_url, channel.slug)} poster={slate} /> : (
                   <div className="absolute inset-0 grid place-items-center text-center">
                     <img src={slate} alt="" className="absolute inset-0 h-full w-full object-cover opacity-25" />
                     <div className="relative">

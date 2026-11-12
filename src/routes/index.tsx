@@ -3,6 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { CalendarRange, Play } from "lucide-react";
 import { publicStationQuery } from "@/components/public/station-query";
 import { PublicFooter, PublicHeader } from "@/components/public/PublicChrome";
+import { playbackUrl } from "@/lib/stream-url";
 import { LivePlayer } from "@/components/public/LivePlayer";
 import { useNow } from "@/hooks/use-station";
 import { CATEGORY_LABELS } from "@/lib/labels";
@@ -49,7 +50,7 @@ function Home() {
           <div className="absolute inset-0 hero-scrim" />
           <div className="relative mx-auto grid max-w-7xl gap-8 px-4 py-10 md:px-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:py-14">
             <div className="monitor rounded-sm shadow-2xl" data-tally={onAir ? "program" : undefined}>
-              {ch && <LivePlayer channelId={ch.id} src={ch.hls_url} onAir={onAir} className="absolute inset-0" />}
+              {ch && <LivePlayer channelId={ch.id} src={playbackUrl(ch.hls_url, ch.slug)} onAir={onAir} className="absolute inset-0" />}
             </div>
             <div className="flex flex-col justify-center">
               <div className="label-caps text-gold">{onAir ? "Now on MOVIE MAX" : "MOVIE MAX"}</div>

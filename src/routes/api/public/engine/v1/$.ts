@@ -83,17 +83,18 @@ async function handle(request: Request, splat: string) {
   const url = new URL(request.url);
 
   if (splat === "config" && request.method === "GET") {
-    const [{ data: channel }, { data: overlays }, { data: inputs }] = await Promise.all([
+    const [{ data: channel }, { data: overlays }, { data: inputs }, { data: destination }] = await Promise.all([
       db.from("channels").select("*").eq("id", channelId).single(),
       db.from("graphics_overlays").select("id, kind, name, enabled, config, show_from, show_until, published_at, updated_at").eq("channel_id", channelId).not("published_at", "is", null),
       db.from("live_inputs").select("id, name, protocol, ingest_url, stream_key, enabled").eq("channel_id", channelId),
+      db.from("stream_destinations").select("provider, rtmp_url, stream_name, username, enabled").eq("channel_id", channelId).maybeSingle(),
     ]);
     let standby: unknown = null;
     if (channel?.standby_media_id) {
       const { data: m } = await db.from("media_assets").select("id, title, storage_key, duration_seconds, status").eq("id", channel.standby_media_id).maybeSingle();
       standby = m ? { ...m, url: await signed(m.storage_key) } : null;
     }
-    return json({ channel, overlays: overlays ?? [], live_inputs: inputs ?? [], standby, server_time: new Date().toISOString() });
+    return json({ channel, destination: destination ?? null, overlays: overlays ?? [], live_inputs: inputs ?? [], standby, server_time: new Date().toISOString() });
   }
 
   if (splat === "schedule" && request.method === "GET") {

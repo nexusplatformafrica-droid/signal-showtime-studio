@@ -14,6 +14,7 @@ import { StatusChip } from "@/components/broadcast/status";
 import { Button } from "@/components/ui/button";
 import { formatDate, formatTime, isEngineOnline, isOnAir } from "@/lib/broadcast";
 import { copyText } from "@/lib/clipboard";
+import { playbackUrl } from "@/lib/stream-url";
 
 export const Route = createFileRoute("/_authenticated/admin/endpoints")({ component: EndpointsPage });
 
@@ -55,10 +56,34 @@ function EndpointsPage() {
     queryFn: async () => (await supabase.from("live_inputs").select("id, name, protocol, ingest_url").eq("channel_id", channel.id)).data ?? [],
   });
 
+  const dest = useQuery({
+    queryKey: ["stream-destination", channel.id],
+    enabled: can("live"),
+    queryFn: async () => (await supabase.from("stream_destinations").select("id, provider, rtmp_url, stream_name, username, enabled").eq("channel_id", channel.id).maybeSingle()).data ?? null,
+  });
+  const [destForm, setDestForm] = useState<{ provider: string; rtmp_url: string; stream_name: string; username: string } | null>(null);
+  const d = destForm ?? { provider: dest.data?.provider ?? "Wowza Streaming Engine", rtmp_url: dest.data?.rtmp_url ?? "", stream_name: dest.data?.stream_name ?? "", username: dest.data?.username ?? "" };
+
+  async function saveDestination() {
+    const rtmp = d.rtmp_url.trim();
+    if (rtmp && !/^(rtmps?|srt):\/\/[^\s]+$/i.test(rtmp)) {
+      toast.error("The server URL must start with rtmp://, rtmps:// or srt://");
+      return;
+    }
+    const row = { channel_id: channel.id, provider: d.provider.trim() || "Wowza Streaming Engine", rtmp_url: rtmp || null, stream_name: d.stream_name.trim() || null, username: d.username.trim() || null, updated_at: new Date().toISOString() };
+    const { error } = await supabase.from("stream_destinations").upsert(row, { onConflict: "channel_id" });
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Broadcast destination saved");
+      setDestForm(null);
+      qc.invalidateQueries({ queryKey: ["stream-destination", channel.id] });
+    }
+  }
+
   async function save() {
     const hls = form.hls_url.trim();
-    if (hls && !/^https:\/\/.+\.m3u8(\?.*)?$/i.test(hls)) {
-      toast.error("The public HLS URL must be an https:// address ending in .m3u8");
+    if (hls && !/^https?:\/\/.+\.m3u8(\?.*)?$/i.test(hls)) {
+      toast.error("The HLS URL must be an http:// or https:// address ending in .m3u8");
       return;
     }
     const domain = form.custom_domain.trim().toLowerCase();
@@ -76,6 +101,8 @@ function EndpointsPage() {
 
   const site = (channel.website_url || (channel.custom_domain ? `https://${channel.custom_domain}` : origin)).replace(/\/$/, "");
   const delivered = lastStatus === "on_air";
+  const publicHls = playbackUrl(channel.hls_url, channel.slug, site);
+  const relayed = !!channel.hls_url && publicHls !== channel.hls_url;
   const checklist = [
     { ok: engineOnline, label: "Playout engine connected (heartbeat within 30 s)" },
     { ok: !!channel.hls_url, label: "Public HLS master playlist URL configured" },
@@ -95,7 +122,8 @@ function EndpointsPage() {
         <div className="space-y-3">
           <section className="panel">
             <div className="panel-header">Public endpoints</div>
-            <EndpointRow label="Public HLS stream (.m3u8)" value={channel.hls_url} hint="Use in VLC, Android Media3/ExoPlayer, Smart TV apps and HLS.js." />
+            <EndpointRow label="Public HLS stream (.m3u8)" value={publicHls} hint="Use in VLC, Android Media3/ExoPlayer, Smart TV apps and HLS.js." />
+            {relayed && <EndpointRow label="Origin stream (http)" value={channel.hls_url} hint="Your provider's direct link. The secure link above relays it so https websites can play it." />}
             <EndpointRow label="Public live TV player" value={site ? `${site}/watch` : null} />
             <EndpointRow label="Channel website" value={site || null} />
             <EndpointRow label="TV guide" value={site ? `${site}/guide` : null} />
@@ -151,13 +179,26 @@ function EndpointsPage() {
           <section className="panel">
             <div className="panel-header">Configuration</div>
             <fieldset disabled={!canEdit} className="space-y-3 p-3 text-sm">
-              <label className="block space-y-1"><span className="label-caps">Public HLS master playlist URL</span><input className="field" placeholder="From your streaming provider / engine" value={form.hls_url} onChange={(e) => setForm({ ...form, hls_url: e.target.value })} /></label>
+              <label className="block space-y-1"><span className="label-caps">Public HLS master playlist URL</span><input className="field" placeholder="http(s)://…/playlist.m3u8 from your provider" value={form.hls_url} onChange={(e) => setForm({ ...form, hls_url: e.target.value })} /></label>
               <label className="block space-y-1"><span className="label-caps">Streaming provider / destination</span><input className="field" placeholder="e.g. Cloudflare Stream" value={form.streaming_provider} onChange={(e) => setForm({ ...form, streaming_provider: e.target.value })} /></label>
               <label className="block space-y-1"><span className="label-caps">Custom stream domain</span><input className="field" placeholder="tv.mydomain.com" value={form.custom_domain} onChange={(e) => setForm({ ...form, custom_domain: e.target.value })} /></label>
               <label className="block space-y-1"><span className="label-caps">Public website URL (after publishing)</span><input className="field" placeholder={origin} value={form.website_url} onChange={(e) => setForm({ ...form, website_url: e.target.value })} /></label>
               <Button type="button" size="sm" variant="brand" onClick={save}>Save endpoints</Button>
               <p className="text-[11px] text-muted-foreground">For a custom stream domain, create a CNAME record at your DNS provider pointing to your streaming provider's hostname; HTTPS certificates are issued by that provider.</p>
             </fieldset>
+          </section>
+          <section className="panel">
+            <div className="panel-header">Broadcast destination (playout engine → provider)</div>
+            {!can("live") ? <EmptyState title="Restricted to broadcast operators" /> : (
+              <fieldset disabled={!canEdit} className="space-y-3 p-3 text-sm">
+                <label className="block space-y-1"><span className="label-caps">Provider</span><input className="field" value={d.provider} onChange={(e) => setDestForm({ ...d, provider: e.target.value })} /></label>
+                <label className="block space-y-1"><span className="label-caps">Server URL</span><input className="field" placeholder="rtmp://host:1935/application" value={d.rtmp_url} onChange={(e) => setDestForm({ ...d, rtmp_url: e.target.value })} /></label>
+                <label className="block space-y-1"><span className="label-caps">Stream name / key</span><input className="field" value={d.stream_name} onChange={(e) => setDestForm({ ...d, stream_name: e.target.value })} /></label>
+                <label className="block space-y-1"><span className="label-caps">Username (if required)</span><input className="field" value={d.username} onChange={(e) => setDestForm({ ...d, username: e.target.value })} /></label>
+                <Button type="button" size="sm" variant="brand" onClick={saveDestination}>Save destination</Button>
+                <p className="text-[11px] text-muted-foreground">The playout engine reads this from its config and pushes the channel here. A publish password, if your provider uses one, is entered only on the engine server.</p>
+              </fieldset>
+            )}
           </section>
           <section className="panel">
             <div className="panel-header">Using the stream in players</div>
