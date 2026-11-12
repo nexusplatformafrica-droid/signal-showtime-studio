@@ -35,7 +35,7 @@ function Home() {
   const schedule = data.schedule.filter((p) => !p.is_commercial_break);
   const { current, next } = findNowNext(schedule, now ?? 0);
   // Only call it "now showing" when the engine confirms the scheduled programme is what is on air.
-  const confirmedCurrent = onAir && (data.status?.source === "schedule" ? schedule.find((p) => p.id === data.status?.current_entry_id) ?? null : null);
+  const confirmedCurrent = onAir && data.status?.source === "schedule" ? schedule.find((p) => p.id === data.status?.current_entry_id) ?? null : null;
   const nowTitle = onAir ? (confirmedCurrent?.title ?? data.status?.current_title ?? "Live broadcast") : null;
   const upcoming = schedule.filter((p) => now != null && +new Date(p.starts_at) > now).slice(0, 8);
   const featured = [...new Map(schedule.filter((p) => p.thumbnail_url).map((p) => [p.title, p])).values()].slice(0, 6);
