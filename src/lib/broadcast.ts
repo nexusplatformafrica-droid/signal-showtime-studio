@@ -24,9 +24,16 @@ function zonedParts(date: Date, tz: string) {
     second: "2-digit",
     weekday: "short",
   });
-  const p: Record<string, string> = {};
-  for (const part of dtf.formatToParts(date)) p[part.type] = part.value;
-  return p;
+  const raw: Partial<Record<string, string>> = {};
+  for (const part of dtf.formatToParts(date)) raw[part.type] = part.value;
+  const g = (k: string) => raw[k] ?? "0";
+  return { year: g("year"), month: g("month"), day: g("day"), hour: g("hour"), minute: g("minute"), second: g("second"), weekday: g("weekday") };
+}
+
+/** Parse "YYYY-MM-DD" into numbers. */
+export function parseYmd(dateStr: string): [number, number, number] {
+  const [y = 1970, m = 1, d = 1] = dateStr.split("-").map(Number);
+  return [y, m, d];
 }
 
 /** Offset (ms) of `tz` from UTC at the given instant. Kampala → +3h. */
@@ -38,8 +45,8 @@ export function tzOffsetMs(tz: string, date: Date): number {
 
 /** Convert a station-local wall-clock date ("YYYY-MM-DD") + time ("HH:mm") to a UTC instant. */
 export function zonedToUtc(dateStr: string, timeStr: string, tz: string = STATION_TZ): Date {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  const [hh, mm] = timeStr.split(":").map(Number);
+  const [y, m, d] = parseYmd(dateStr);
+  const [hh = 0, mm = 0] = timeStr.split(":").map(Number);
   const guess = Date.UTC(y, m - 1, d, hh, mm || 0);
   const off1 = tzOffsetMs(tz, new Date(guess));
   let t = guess - off1;
@@ -100,13 +107,13 @@ export function formatBytes(bytes: number | null | undefined) {
 
 /** Add whole days to a "YYYY-MM-DD" string. */
 export function addDays(dateStr: string, n: number) {
-  const [y, m, d] = dateStr.split("-").map(Number);
+  const [y, m, d] = parseYmd(dateStr);
   const t = new Date(Date.UTC(y, m - 1, d + n));
   return t.toISOString().slice(0, 10);
 }
 
 export function weekdayOf(dateStr: string) {
-  const [y, m, d] = dateStr.split("-").map(Number);
+  const [y, m, d] = parseYmd(dateStr);
   return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
 }
 
@@ -219,11 +226,12 @@ export function detectScheduleIssues(
   if (opts.windowStart && opts.windowEnd) {
     const ws = +new Date(opts.windowStart);
     const we = +new Date(opts.windowEnd);
-    if (active.length === 0) {
+    const firstEntry = active[0];
+    if (!firstEntry) {
       issues.push({ kind: "gap", severity: "warning", entryIds: [], message: "No programmes scheduled in this period", at: opts.windowStart });
     } else {
-      const first = +new Date(active[0].starts_at);
-      if (first - ws > gapMs && first > ws) issues.push({ kind: "gap", severity: "warning", entryIds: [active[0].id], message: `Empty airtime at start of period (${formatDuration((first - ws) / 1000)})`, at: opts.windowStart });
+      const first = +new Date(firstEntry.starts_at);
+      if (first - ws > gapMs && first > ws) issues.push({ kind: "gap", severity: "warning", entryIds: [firstEntry.id], message: `Empty airtime at start of period (${formatDuration((first - ws) / 1000)})`, at: opts.windowStart });
       if (we - maxEnd > gapMs) issues.push({ kind: "gap", severity: "warning", entryIds: [], message: `Empty airtime at end of period (${formatDuration((we - maxEnd) / 1000)})`, at: new Date(maxEnd).toISOString() });
     }
   }
