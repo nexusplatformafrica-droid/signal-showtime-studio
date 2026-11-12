@@ -16,6 +16,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as AuthenticatedAdminControlRouteImport } from './routes/_authenticated/admin/control'
+import { Route as AuthenticatedAdminGraphicsRouteImport } from './routes/_authenticated/admin/graphics'
 import { Route as AuthenticatedAdminLiveRouteImport } from './routes/_authenticated/admin/live'
 import { Route as AuthenticatedAdminMediaRouteImport } from './routes/_authenticated/admin/media'
 import { Route as AuthenticatedAdminPlaylistsRouteImport } from './routes/_authenticated/admin/playlists'
@@ -58,6 +59,12 @@ const AuthenticatedAdminControlRoute =
     path: '/control',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
+const AuthenticatedAdminGraphicsRoute =
+  AuthenticatedAdminGraphicsRouteImport.update({
+    id: '/graphics',
+    path: '/graphics',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
 const AuthenticatedAdminLiveRoute = AuthenticatedAdminLiveRouteImport.update({
   id: '/live',
   path: '/live',
@@ -98,6 +105,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/admin/control': typeof AuthenticatedAdminControlRoute
+  '/admin/graphics': typeof AuthenticatedAdminGraphicsRoute
   '/admin/live': typeof AuthenticatedAdminLiveRoute
   '/admin/media': typeof AuthenticatedAdminMediaRoute
   '/admin/playlists': typeof AuthenticatedAdminPlaylistsRoute
@@ -111,6 +119,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/admin/control': typeof AuthenticatedAdminControlRoute
+  '/admin/graphics': typeof AuthenticatedAdminGraphicsRoute
   '/admin/live': typeof AuthenticatedAdminLiveRoute
   '/admin/media': typeof AuthenticatedAdminMediaRoute
   '/admin/playlists': typeof AuthenticatedAdminPlaylistsRoute
@@ -127,6 +136,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/_authenticated/admin/control': typeof AuthenticatedAdminControlRoute
+  '/_authenticated/admin/graphics': typeof AuthenticatedAdminGraphicsRoute
   '/_authenticated/admin/live': typeof AuthenticatedAdminLiveRoute
   '/_authenticated/admin/media': typeof AuthenticatedAdminMediaRoute
   '/_authenticated/admin/playlists': typeof AuthenticatedAdminPlaylistsRoute
@@ -143,6 +153,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/admin'
     | '/admin/control'
+    | '/admin/graphics'
     | '/admin/live'
     | '/admin/media'
     | '/admin/playlists'
@@ -156,6 +167,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/admin/control'
+    | '/admin/graphics'
     | '/admin/live'
     | '/admin/media'
     | '/admin/playlists'
@@ -171,6 +183,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/_authenticated/admin'
     | '/_authenticated/admin/control'
+    | '/_authenticated/admin/graphics'
     | '/_authenticated/admin/live'
     | '/_authenticated/admin/media'
     | '/_authenticated/admin/playlists'
@@ -240,6 +253,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminControlRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/_authenticated/admin/graphics': {
+      id: '/_authenticated/admin/graphics'
+      path: '/graphics'
+      fullPath: '/admin/graphics'
+      preLoaderRoute: typeof AuthenticatedAdminGraphicsRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
     '/_authenticated/admin/live': {
       id: '/_authenticated/admin/live'
       path: '/live'
@@ -287,6 +307,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedAdminRouteRouteChildren {
   AuthenticatedAdminControlRoute: typeof AuthenticatedAdminControlRoute
+  AuthenticatedAdminGraphicsRoute: typeof AuthenticatedAdminGraphicsRoute
   AuthenticatedAdminLiveRoute: typeof AuthenticatedAdminLiveRoute
   AuthenticatedAdminMediaRoute: typeof AuthenticatedAdminMediaRoute
   AuthenticatedAdminPlaylistsRoute: typeof AuthenticatedAdminPlaylistsRoute
@@ -297,6 +318,7 @@ interface AuthenticatedAdminRouteRouteChildren {
 const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren =
   {
     AuthenticatedAdminControlRoute: AuthenticatedAdminControlRoute,
+    AuthenticatedAdminGraphicsRoute: AuthenticatedAdminGraphicsRoute,
     AuthenticatedAdminLiveRoute: AuthenticatedAdminLiveRoute,
     AuthenticatedAdminMediaRoute: AuthenticatedAdminMediaRoute,
     AuthenticatedAdminPlaylistsRoute: AuthenticatedAdminPlaylistsRoute,
