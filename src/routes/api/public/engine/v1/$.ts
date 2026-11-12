@@ -85,7 +85,7 @@ async function handle(request: Request, splat: string) {
   if (splat === "config" && request.method === "GET") {
     const [{ data: channel }, { data: overlays }, { data: inputs }, { data: destination }] = await Promise.all([
       db.from("channels").select("*").eq("id", channelId).single(),
-      db.from("graphics_overlays").select("id, kind, name, enabled, config, show_from, show_until, published_at, updated_at").eq("channel_id", channelId).not("published_at", "is", null),
+      db.from("graphics_overlays").select("id, kind, name, published_enabled, published_config, show_from, show_until, published_at").eq("channel_id", channelId).not("published_config", "is", null),
       db.from("live_inputs").select("id, name, protocol, ingest_url, stream_key, enabled").eq("channel_id", channelId),
       db.from("stream_destinations").select("provider, rtmp_url, stream_name, username, enabled").eq("channel_id", channelId).maybeSingle(),
     ]);
@@ -94,7 +94,9 @@ async function handle(request: Request, splat: string) {
       const { data: m } = await db.from("media_assets").select("id, title, storage_key, source_url, duration_seconds, status").eq("id", channel.standby_media_id).maybeSingle();
       standby = m ? { ...m, url: await mediaUrl(m) } : null;
     }
-    return json({ channel, destination: destination ?? null, overlays: overlays ?? [], live_inputs: inputs ?? [], standby, server_time: new Date().toISOString() });
+    // Only the published state goes on air; drafts stay in the editor.
+    const liveOverlays = (overlays ?? []).map(({ published_enabled, published_config, ...o }) => ({ ...o, enabled: published_enabled, config: published_config }));
+    return json({ channel, destination: destination ?? null, overlays: liveOverlays, live_inputs: inputs ?? [], standby, server_time: new Date().toISOString() });
   }
 
   if (splat === "schedule" && request.method === "GET") {

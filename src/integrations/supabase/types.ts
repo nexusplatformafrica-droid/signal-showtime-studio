@@ -355,6 +355,8 @@ export type Database = {
           kind: Database["public"]["Enums"]["overlay_kind"]
           name: string
           published_at: string | null
+          published_config: Json | null
+          published_enabled: boolean
           show_from: string | null
           show_until: string | null
           updated_at: string
@@ -368,6 +370,8 @@ export type Database = {
           kind: Database["public"]["Enums"]["overlay_kind"]
           name: string
           published_at?: string | null
+          published_config?: Json | null
+          published_enabled?: boolean
           show_from?: string | null
           show_until?: string | null
           updated_at?: string
@@ -381,6 +385,8 @@ export type Database = {
           kind?: Database["public"]["Enums"]["overlay_kind"]
           name?: string
           published_at?: string | null
+          published_config?: Json | null
+          published_enabled?: boolean
           show_from?: string | null
           show_until?: string | null
           updated_at?: string

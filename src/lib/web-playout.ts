@@ -77,3 +77,9 @@ export function pickWebProgramme(bundle: PlayoutBundle | null | undefined, now: 
   }
   return null;
 }
+
+/** The next programme starting after `now` (for "up next" graphics). */
+export function nextWebEntry(bundle: PlayoutBundle | null | undefined, now: number): PlayoutEntry | null {
+  if (!bundle) return null;
+  return bundle.entries.filter((e) => Date.parse(e.starts_at) > now).sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))[0] ?? null;
+}

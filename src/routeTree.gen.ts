@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as GuideRouteImport } from './routes/guide'
+import { Route as OutputRouteImport } from './routes/output'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as WatchRouteImport } from './routes/watch'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
@@ -46,6 +47,11 @@ const AuthRoute = AuthRouteImport.update({
 const GuideRoute = GuideRouteImport.update({
   id: '/guide',
   path: '/guide',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OutputRoute = OutputRouteImport.update({
+  id: '/output',
+  path: '/output',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -135,6 +141,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/guide': typeof GuideRoute
+  '/output': typeof OutputRoute
   '/reset-password': typeof ResetPasswordRoute
   '/watch': typeof WatchRoute
   '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
@@ -155,6 +162,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/guide': typeof GuideRoute
+  '/output': typeof OutputRoute
   '/reset-password': typeof ResetPasswordRoute
   '/watch': typeof WatchRoute
   '/admin/control': typeof AuthenticatedAdminControlRoute
@@ -176,6 +184,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/guide': typeof GuideRoute
+  '/output': typeof OutputRoute
   '/reset-password': typeof ResetPasswordRoute
   '/watch': typeof WatchRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
@@ -198,6 +207,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/guide'
+    | '/output'
     | '/reset-password'
     | '/watch'
     | '/admin'
@@ -218,6 +228,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/guide'
+    | '/output'
     | '/reset-password'
     | '/watch'
     | '/admin/control'
@@ -238,6 +249,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/guide'
+    | '/output'
     | '/reset-password'
     | '/watch'
     | '/_authenticated/admin'
@@ -260,6 +272,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   GuideRoute: typeof GuideRoute
+  OutputRoute: typeof OutputRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   WatchRoute: typeof WatchRoute
   ApiPublicHlsSplatRoute: typeof ApiPublicHlsSplatRoute
@@ -295,6 +308,13 @@ declare module '@tanstack/react-router' {
       path: '/guide'
       fullPath: '/guide'
       preLoaderRoute: typeof GuideRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/output': {
+      id: '/output'
+      path: '/output'
+      fullPath: '/output'
+      preLoaderRoute: typeof OutputRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -451,6 +471,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   GuideRoute: GuideRoute,
+  OutputRoute: OutputRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   WatchRoute: WatchRoute,
   ApiPublicHlsSplatRoute: ApiPublicHlsSplatRoute,

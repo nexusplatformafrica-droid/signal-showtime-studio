@@ -10,10 +10,12 @@ import { useNow } from "@/hooks/use-station";
 import { PageHeader, EmptyState } from "@/components/admin/PageHeader";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { StatusChip } from "@/components/broadcast/status";
-import { Wordmark } from "@/components/brand/Wordmark";
+import { GraphicsLayer } from "@/components/broadcast/GraphicsLayer";
+import { useWebPlayout } from "@/hooks/use-web-playout";
+import type { LiveOverlay } from "@/lib/graphics";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { formatClock, formatTime } from "@/lib/broadcast";
+import { formatTime } from "@/lib/broadcast";
 import { cn } from "@/lib/utils";
 import slate from "@/assets/standby-slate.jpg";
 
@@ -59,16 +61,17 @@ function GraphicsPage() {
   const activeCfg = active ? draft[active.id] ?? {} : {};
   const setCfg = (patch: OverlayConfig) => active && setDraft((d) => ({ ...d, [active.id]: { ...(d[active.id] ?? {}), ...patch } }));
   const dirty = list.some((o) => JSON.stringify(draft[o.id] ?? {}) !== JSON.stringify(cfg(o)) || enabled[o.id] !== o.enabled);
-  const unpublished = list.some((o) => !o.published_at || o.updated_at > o.published_at);
+  // Compare what is in the editor with what is actually on air.
+  const unpublished = list.some((o) => JSON.stringify(draft[o.id] ?? {}) !== JSON.stringify(o.published_config ?? null) || (enabled[o.id] ?? o.enabled) !== o.published_enabled);
 
   async function save(publish: boolean) {
     const ts = new Date().toISOString();
     const results = await Promise.all(list.map((o) =>
-      supabase.from("graphics_overlays").update({ config: (draft[o.id] ?? {}) as Json, enabled: enabled[o.id] ?? o.enabled, ...(publish ? { published_at: new Date(Date.now() + 1000).toISOString() } : {}) }).eq("id", o.id),
+      supabase.from("graphics_overlays").update({ config: (draft[o.id] ?? {}) as Json, enabled: enabled[o.id] ?? o.enabled, ...(publish ? { published_at: ts, published_config: (draft[o.id] ?? {}) as Json, published_enabled: enabled[o.id] ?? o.enabled } : {}) }).eq("id", o.id),
     ));
     const err = results.find((r) => r.error)?.error;
     if (err) toast.error(err.message);
-    else toast.success(publish ? `Graphics published to the broadcast output at ${formatTime(ts, channel.timezone)}` : "Graphics saved as draft");
+    else toast.success(publish ? `Graphics are on air now (${formatTime(ts, channel.timezone)}) — viewers see them within 15 seconds` : "Saved as draft — not on air until you publish");
     qc.invalidateQueries({ queryKey: ["overlays", channel.id] });
   }
 
@@ -90,11 +93,11 @@ function GraphicsPage() {
 
   return (
     <div>
-      <PageHeader title="Graphics" description="On-screen graphics are composited by the playout engine into the broadcast output." actions={
+      <PageHeader title="Graphics" description="Published graphics appear over the live picture on the website and on the output page you send to Wowza." actions={
         <>
           {unpublished && <StatusChip tone="warn">Unpublished changes</StatusChip>}
           <Button size="xs" variant="panel" disabled={!canEdit || !dirty} onClick={() => save(false)}>Save draft</Button>
-          <ConfirmButton size="xs" variant="brand" disabled={!canEdit} title="Publish graphics to air?" description="Enabled overlays will be rendered into the live output for every viewer on the engine's next config refresh." confirmLabel="Publish" onConfirm={() => save(true)}>Publish to output</ConfirmButton>
+          <ConfirmButton size="xs" variant="brand" disabled={!canEdit} title="Publish graphics to air?" description="Enabled overlays go on air for every viewer within 15 seconds." confirmLabel="Publish" onConfirm={() => save(true)}>Publish to output</ConfirmButton>
         </>
       } />
       <div className="grid gap-3 p-3 xl:grid-cols-[260px_minmax(0,1fr)_320px]">
@@ -110,7 +113,7 @@ function GraphicsPage() {
         </section>
 
         <section className="panel">
-          <div className="panel-header">Preview<span className="normal-case tracking-normal">layout preview — final render happens on the playout engine</span></div>
+          <div className="panel-header">Preview<span className="normal-case tracking-normal">exactly how it looks on air · drafts included</span></div>
           <div className="p-2"><GraphicsPreview overlays={list} draft={draft} enabled={enabled} /></div>
         </section>
 
@@ -175,49 +178,14 @@ function ScheduleWindow({ overlay }: { overlay: Overlay }) {
 function GraphicsPreview({ overlays, draft, enabled }: { overlays: Overlay[]; draft: Record<string, OverlayConfig>; enabled: Record<string, boolean> }) {
   const { channel } = useStation();
   const now = useNow(1000);
-  const pos = (p?: string) => {
-    switch (p) {
-      case "top-left": return "left-[3%] top-[4%]";
-      case "top-center": return "left-1/2 top-[4%] -translate-x-1/2";
-      case "top-right": return "right-[3%] top-[4%]";
-      case "bottom-left": return "bottom-[12%] left-[3%]";
-      case "bottom-center": return "bottom-[12%] left-1/2 -translate-x-1/2";
-      case "bottom-right": return "bottom-[12%] right-[3%]";
-      default: return "inset-x-0 bottom-0";
-    }
-  };
+  const { pick } = useWebPlayout(now);
+  if (now == null) return <div className="monitor" />;
+  // Preview shows every enabled overlay (ignoring timing) so each one can be positioned.
+  const items: LiveOverlay[] = overlays.filter((o) => enabled[o.id]).map((o) => ({ id: o.id, kind: o.kind as LiveOverlay["kind"], name: o.name, config: { ...(draft[o.id] ?? {}), duration: 0 }, show_from: null, show_until: null, published_at: null }));
   return (
-    <div className="monitor @container" style={{ containerType: "inline-size" }}>
+    <div className="monitor">
       <img src={slate} alt="" className="absolute inset-0 h-full w-full object-cover" />
-      {overlays.filter((o) => enabled[o.id]).map((o) => {
-        const c = draft[o.id] ?? {};
-        const style: React.CSSProperties = { opacity: c.opacity ?? 1, width: o.kind === "ticker" || o.kind === "breaking_news" ? "100%" : `${c.size ?? 20}%` };
-        const accent = { backgroundColor: c.color ?? "var(--tally-program)" };
-        const fs = { fontSize: "clamp(8px, 1.6cqw, 22px)" };
-        return (
-          <div key={o.id} className={cn("absolute", pos(c.position))} style={style}>
-            {o.kind === "logo" && (c.logo_url ? <img src={c.logo_url} alt="Logo" className="w-full" /> : <Wordmark className="text-[clamp(8px,2.2cqw,28px)]" />)}
-            {o.kind === "on_air" && <span className="inline-block rounded-sm px-[0.6em] py-[0.2em] font-bold uppercase tracking-widest text-program-foreground" style={{ ...accent, ...fs }}>{c.text ?? "On Air"}</span>}
-            {o.kind === "live_indicator" && <span className="inline-block rounded-sm px-[0.6em] py-[0.2em] font-bold uppercase text-program-foreground" style={{ ...accent, ...fs }}>Live</span>}
-            {o.kind === "clock" && <span className="timecode rounded-sm bg-inset/80 px-[0.5em] py-[0.15em] font-semibold" style={fs}>{now ? formatClock(now, channel.timezone).slice(0, 5) : "--:--"}</span>}
-            {(o.kind === "now_showing" || o.kind === "next_programme") && (
-              <div className="bg-inset/90" style={fs}><div className="px-[0.6em] py-[0.2em] text-[0.7em] font-bold uppercase tracking-widest text-program-foreground" style={accent}>{o.kind === "now_showing" ? "Now showing" : "Up next"}</div><div className="px-[0.6em] py-[0.3em] font-semibold">Programme title</div></div>
-            )}
-            {o.kind === "lower_third" && (
-              <div style={fs}><div className="px-[0.6em] py-[0.25em] font-bold text-program-foreground" style={accent}>{c.title || "Name"}</div><div className="bg-inset/90 px-[0.6em] py-[0.2em] text-[0.8em]">{c.subtitle || "Role"}</div></div>
-            )}
-            {(o.kind === "ticker" || o.kind === "breaking_news") && (
-              <div className="flex items-stretch overflow-hidden bg-inset/90" style={fs}>
-                <span className="shrink-0 px-[0.6em] py-[0.3em] font-bold uppercase text-program-foreground" style={accent}>{o.kind === "breaking_news" ? "Breaking" : "MOVIE MAX"}</span>
-                <span className="relative flex-1 overflow-hidden whitespace-nowrap py-[0.3em]"><span className="animate-ticker inline-block" style={{ ["--ticker-duration" as string]: `${Math.max(6, 1200 / (c.speed ?? 60))}s` }}>{c.text || "Ticker text"}</span></span>
-              </div>
-            )}
-            {(o.kind === "ad_banner" || o.kind === "station_id" || o.kind === "programme_title" || o.kind === "countdown") && (
-              <span className="inline-block bg-inset/90 px-[0.6em] py-[0.3em] font-semibold" style={fs}>{c.text || o.name}</span>
-            )}
-          </div>
-        );
-      })}
+      <GraphicsLayer overlays={items} timezone={channel.timezone} ctx={{ now, live: true, title: pick?.title ?? "Programme title", nextTitle: "Next programme", programmeStartedAt: now }} />
     </div>
   );
 }
