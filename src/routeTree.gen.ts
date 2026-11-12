@@ -12,7 +12,9 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as GuideRouteImport } from './routes/guide'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as WatchRouteImport } from './routes/watch'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as AuthenticatedAdminControlRouteImport } from './routes/_authenticated/admin/control'
@@ -40,9 +42,19 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GuideRoute = GuideRouteImport.update({
+  id: '/guide',
+  path: '/guide',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WatchRoute = WatchRouteImport.update({
+  id: '/watch',
+  path: '/watch',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAdminRouteRoute = AuthenticatedAdminRouteRouteImport.update({
@@ -116,7 +128,9 @@ const ApiPublicEngineV1SplatRoute = ApiPublicEngineV1SplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/guide': typeof GuideRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/watch': typeof WatchRoute
   '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/admin/control': typeof AuthenticatedAdminControlRoute
   '/admin/endpoints': typeof AuthenticatedAdminEndpointsRoute
@@ -133,7 +147,9 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/guide': typeof GuideRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/watch': typeof WatchRoute
   '/admin/control': typeof AuthenticatedAdminControlRoute
   '/admin/endpoints': typeof AuthenticatedAdminEndpointsRoute
   '/admin/graphics': typeof AuthenticatedAdminGraphicsRoute
@@ -151,7 +167,9 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/guide': typeof GuideRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/watch': typeof WatchRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/_authenticated/admin/control': typeof AuthenticatedAdminControlRoute
   '/_authenticated/admin/endpoints': typeof AuthenticatedAdminEndpointsRoute
@@ -170,7 +188,9 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/guide'
     | '/reset-password'
+    | '/watch'
     | '/admin'
     | '/admin/control'
     | '/admin/endpoints'
@@ -187,7 +207,9 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/guide'
     | '/reset-password'
+    | '/watch'
     | '/admin/control'
     | '/admin/endpoints'
     | '/admin/graphics'
@@ -204,7 +226,9 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/guide'
     | '/reset-password'
+    | '/watch'
     | '/_authenticated/admin'
     | '/_authenticated/admin/control'
     | '/_authenticated/admin/endpoints'
@@ -223,7 +247,9 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  GuideRoute: typeof GuideRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  WatchRoute: typeof WatchRoute
   ApiPublicThumbnailsSplatRoute: typeof ApiPublicThumbnailsSplatRoute
   ApiPublicEngineV1SplatRoute: typeof ApiPublicEngineV1SplatRoute
 }
@@ -251,11 +277,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/guide': {
+      id: '/guide'
+      path: '/guide'
+      fullPath: '/guide'
+      preLoaderRoute: typeof GuideRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/watch': {
+      id: '/watch'
+      path: '/watch'
+      fullPath: '/watch'
+      preLoaderRoute: typeof WatchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin': {
@@ -390,7 +430,9 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  GuideRoute: GuideRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  WatchRoute: WatchRoute,
   ApiPublicThumbnailsSplatRoute: ApiPublicThumbnailsSplatRoute,
   ApiPublicEngineV1SplatRoute: ApiPublicEngineV1SplatRoute,
 }
