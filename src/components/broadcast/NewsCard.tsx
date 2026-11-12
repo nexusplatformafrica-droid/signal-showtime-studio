@@ -36,7 +36,7 @@ function Badge({ t, img, className, style }: { t: NewsText; img?: string | undef
 
 /** Long headlines shrink to stay on one line, like a real news bar. */
 export function headlineScale(len: number) {
-  return len <= 30 ? 1 : len <= 40 ? 0.84 : len <= 52 ? 0.7 : 0.6;
+  return len <= 26 ? 1 : len <= 34 ? 0.86 : len <= 44 ? 0.74 : len <= 56 ? 0.63 : 0.55;
 }
 
 function Headline({ t, className, style }: { t: NewsText; className?: string; style?: CSSProperties }) {
