@@ -4,7 +4,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Archive, FolderPlus, Folder, Trash2, Upload, X, Film, AlertTriangle, ChevronLeft, ChevronRight, Pause, RefreshCcw } from "lucide-react";
+import { Archive, FolderPlus, Folder, Trash2, Upload, X, Film, AlertTriangle, ChevronLeft, ChevronRight, Pause, RefreshCcw, Link2, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { useStation } from "@/components/admin/station-context";
@@ -17,8 +17,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { CATEGORIES, CATEGORY_LABELS, CLASSIFICATIONS, type MediaCategory } from "@/lib/labels";
 import { formatBytes, formatDate, formatDuration } from "@/lib/broadcast";
-import { abortMediaUpload, completeMediaUpload, deleteMediaAssets, getMediaPlaybackUrl, getStorageStatus, signMediaParts, startMediaUpload } from "@/lib/station.functions";
-import { fingerprintOf, getResumable, probeVideo, setResumable, uploadMultipart } from "@/lib/upload";
+import { abortMediaUpload, completeMediaUpload, deleteMediaAssets, getMediaPlaybackUrl, getStorageStatus, importMediaLink, signMediaParts, startMediaUpload } from "@/lib/station.functions";
+import { fingerprintOf, getResumable, probeVideo, probeVideoUrl, setResumable, uploadMultipart } from "@/lib/upload";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin/media")({
@@ -110,12 +110,12 @@ function MediaLibrary() {
           <select className="field h-7 w-32" value={sort} onChange={(e) => setSort(e.target.value as typeof sort)}>
             <option value="created_at">Newest</option><option value="title">Title A–Z</option><option value="duration_seconds">Longest</option><option value="file_size">Largest</option>
           </select>
-          <Button size="xs" variant="brand" disabled={!canEdit || !storage.data?.configured} onClick={() => setUploadOpen(true)}><Upload />Upload</Button>
+          <Button size="xs" variant="brand" disabled={!canEdit} onClick={() => setUploadOpen(true)}><Upload />Upload / add link</Button>
         </>
       }>
         {storage.data && !storage.data.configured && (
           <div className="flex items-center gap-2 border-t border-warn/30 bg-warn/10 px-4 py-1.5 text-xs text-warn">
-            <AlertTriangle className="size-3.5" /> Media storage (Cloudflare R2) is not connected. Uploads are disabled until the R2 credentials are added — see Settings → Storage.
+            <AlertTriangle className="size-3.5" /> Media storage (Cloudflare R2) is not connected. File uploads are disabled until the R2 credentials are added (Settings → Storage). You can still add files by pasting their public R2 link.
           </div>
         )}
         {selected.size > 0 && (
@@ -179,7 +179,7 @@ function MediaLibrary() {
       </div>
 
       <MediaEditor media={editing} onClose={() => setEditing(null)} folders={folders.data ?? []} canEdit={canEdit} onChanged={refresh} storageReady={!!storage.data?.configured} />
-      <UploadDialog open={uploadOpen} onOpenChange={setUploadOpen} folderId={folder !== "all" && folder !== "none" ? folder : null} onDone={refresh} />
+      <UploadDialog open={uploadOpen} onOpenChange={setUploadOpen} folderId={folder !== "all" && folder !== "none" ? folder : null} onDone={refresh} storageReady={!!storage.data?.configured} />
     </div>
   );
 }
@@ -208,7 +208,7 @@ function MediaEditor({ media, onClose, folders, canEdit, onChanged, storageReady
     }
   }, [media]);
 
-  const preview = useQuery({ queryKey: ["media-url", media?.id], enabled: !!media && media.status === "ready" && storageReady, queryFn: () => sign({ data: { mediaId: media!.id } }), staleTime: 30 * 60_000 });
+  const preview = useQuery({ queryKey: ["media-url", media?.id], enabled: !!media && media.status === "ready" && (storageReady || !!media.source_url), queryFn: () => sign({ data: { mediaId: media!.id } }), staleTime: 30 * 60_000 });
 
   async function save() {
     if (!media) return;
@@ -262,18 +262,18 @@ function MediaEditor({ media, onClose, folders, canEdit, onChanged, storageReady
               <dt className="text-muted-foreground">File size</dt><dd className="timecode">{formatBytes(media.file_size)}</dd>
               <dt className="text-muted-foreground">Format</dt><dd>{media.mime_type ?? media.container ?? "—"}</dd>
               <dt className="text-muted-foreground">Original file</dt><dd className="truncate">{media.original_filename ?? "—"}</dd>
-              <dt className="text-muted-foreground">Storage</dt><dd className="truncate">{media.storage_bucket ? `r2://${media.storage_bucket}/…/${media.storage_key?.split("/").pop()}` : "—"}</dd>
+              <dt className="text-muted-foreground">Storage</dt><dd className="truncate">{media.source_url ? <a href={media.source_url} target="_blank" rel="noreferrer" className="underline" title={media.source_url}>Linked file</a> : media.storage_bucket ? `r2://${media.storage_bucket}/…/${media.storage_key?.split("/").pop()}` : "—"}</dd>
               <dt className="text-muted-foreground">Status</dt><dd><MediaStatus m={media} /></dd>
             </dl>
             {replaceProgress != null && <div className="h-1 overflow-hidden rounded-full bg-inset"><div className="h-full bg-preview" style={{ width: `${replaceProgress}%` }} /></div>}
             <div className="flex flex-wrap gap-1.5 border-t border-border pt-3">
               <Button size="sm" variant="brand" disabled={!canEdit} onClick={save}>Save</Button>
               <input ref={replaceInput} type="file" accept="video/*,.mkv,.mxf,.ts" hidden onChange={(e) => e.target.files?.[0] && replace(e.target.files[0])} />
-              <Button size="sm" variant="panel" disabled={!canEdit || !storageReady || replaceProgress != null} onClick={() => replaceInput.current?.click()}><RefreshCcw />Replace file</Button>
+              <Button size="sm" variant="panel" disabled={!canEdit || !storageReady || replaceProgress != null || !!media.source_url} onClick={() => replaceInput.current?.click()}><RefreshCcw />Replace file</Button>
               <Button size="sm" variant="panel" disabled={!canEdit} onClick={async () => { await supabase.from("media_assets").update({ status: media.status === "archived" ? "ready" : "archived", archived_at: media.status === "archived" ? null : new Date().toISOString() }).eq("id", media.id); onChanged(); onClose(); }}>
                 <Archive />{media.status === "archived" ? "Restore" : "Archive"}
               </Button>
-              <ConfirmButton size="sm" variant="ghost" disabled={!canEdit} destructive title="Delete media?" description={`"${media.title}" will be removed from storage permanently.`} confirmLabel="Delete" onConfirm={async () => { try { await del({ data: { ids: [media.id] } }); onChanged(); onClose(); } catch (e) { toast.error(e instanceof Error ? e.message : "Delete failed"); } }}>
+              <ConfirmButton size="sm" variant="ghost" disabled={!canEdit} destructive title="Delete media?" description={media.source_url ? `"${media.title}" will be removed from the library. The file itself stays in your R2 bucket.` : `"${media.title}" will be removed from storage permanently.`} confirmLabel="Delete" onConfirm={async () => { try { await del({ data: { ids: [media.id] } }); onChanged(); onClose(); } catch (e) { toast.error(e instanceof Error ? e.message : "Delete failed"); } }}>
                 <Trash2 />Delete
               </ConfirmButton>
             </div>
@@ -299,7 +299,7 @@ interface UploadItem {
   ctl?: AbortController | undefined;
 }
 
-function UploadDialog({ open, onOpenChange, folderId, onDone }: { open: boolean; onOpenChange: (o: boolean) => void; folderId: string | null; onDone: () => void }) {
+function UploadDialog({ open, onOpenChange, folderId, onDone, storageReady }: { open: boolean; onOpenChange: (o: boolean) => void; folderId: string | null; onDone: () => void; storageReady: boolean }) {
   const { channel, user } = useStation();
   const [items, setItems] = useState<UploadItem[]>([]);
   const [category, setCategory] = useState<MediaCategory>("movie");
@@ -376,15 +376,20 @@ function UploadDialog({ open, onOpenChange, folderId, onDone }: { open: boolean;
           <select className="field h-7 w-44" value={category} onChange={(e) => setCategory(e.target.value as MediaCategory)}>{CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}</select>
           <span className="ml-auto text-muted-foreground">Large files upload in 16 MB parts and resume automatically.</span>
         </div>
-        <label
-          onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
-          onDragLeave={() => setDrag(false)}
-          onDrop={(e) => { e.preventDefault(); setDrag(false); addFiles(e.dataTransfer.files); }}
-          className={cn("flex h-28 cursor-pointer flex-col items-center justify-center rounded-sm border border-dashed text-sm text-muted-foreground", drag ? "border-preview bg-preview/10" : "border-border bg-inset")}
-        >
-          <Upload className="mb-1 size-5" />Drop video files here or click to browse
-          <input type="file" multiple accept="video/*,.mkv,.mxf,.ts" hidden onChange={(e) => e.target.files && addFiles(e.target.files)} />
-        </label>
+        <LinkImport category={category} folderId={folderId} onDone={onDone} />
+        {storageReady ? (
+          <label
+            onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+            onDragLeave={() => setDrag(false)}
+            onDrop={(e) => { e.preventDefault(); setDrag(false); addFiles(e.dataTransfer.files); }}
+            className={cn("flex h-28 cursor-pointer flex-col items-center justify-center rounded-sm border border-dashed text-sm text-muted-foreground", drag ? "border-preview bg-preview/10" : "border-border bg-inset")}
+          >
+            <Upload className="mb-1 size-5" />Or drop video files here / click to browse
+            <input type="file" multiple accept="video/*,.mkv,.mxf,.ts" hidden onChange={(e) => e.target.files && addFiles(e.target.files)} />
+          </label>
+        ) : (
+          <div className="rounded-sm border border-dashed border-border bg-inset p-3 text-center text-xs text-muted-foreground">File uploads need the R2 credentials (Settings → Storage). Pasting a public link works without them.</div>
+        )}
         <div className="max-h-72 space-y-1 overflow-y-auto">
           {items.map((i) => (
             <div key={i.id} className="rounded-sm border border-border bg-inset px-2 py-1.5 text-xs">
@@ -404,5 +409,77 @@ function UploadDialog({ open, onOpenChange, folderId, onDone }: { open: boolean;
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+
+interface LinkItem { id: string; url: string; state: "adding" | "reading" | "done" | "error"; title?: string; error?: string }
+
+/** Adds files that are already in R2 by their link — nothing is uploaded again. */
+function LinkImport({ category, folderId, onDone }: { category: MediaCategory; folderId: string | null; onDone: () => void }) {
+  const { channel } = useStation();
+  const [text, setText] = useState("");
+  const [items, setItems] = useState<LinkItem[]>([]);
+  const importFn = useServerFn(importMediaLink);
+  const sign = useServerFn(getMediaPlaybackUrl);
+  const patch = (id: string, p: Partial<LinkItem>) => setItems((l) => l.map((i) => (i.id === id ? { ...i, ...p } : i)));
+  const busy = items.some((i) => i.state === "adding" || i.state === "reading");
+
+  async function addOne(url: string) {
+    const id = crypto.randomUUID();
+    setItems((l) => [...l, { id, url, state: "adding" }]);
+    try {
+      const res = await importFn({ data: { channelId: channel.id, url, category, folderId } });
+      patch(id, { state: "reading", title: res.title });
+      onDone();
+      const playUrl = res.playUrl ?? (await sign({ data: { mediaId: res.id } }).catch(() => ({ url: null }))).url;
+      if (playUrl) {
+        const probe = await probeVideoUrl(playUrl);
+        const update: Partial<Media> = {};
+        if (probe.duration != null) update.duration_seconds = probe.duration;
+        if (probe.width) { update.width = probe.width; update.height = probe.height; }
+        if (probe.thumbnail) {
+          const path = `${res.id}.jpg`;
+          const up = await supabase.storage.from("media-thumbnails").upload(path, probe.thumbnail, { contentType: "image/jpeg", upsert: true });
+          if (!up.error) update.thumbnail_url = `/api/public/thumbnails/${path}`;
+        }
+        if (Object.keys(update).length) await supabase.from("media_assets").update(update).eq("id", res.id);
+      }
+      patch(id, { state: "done" });
+      onDone();
+    } catch (e) {
+      patch(id, { state: "error", error: e instanceof Error ? e.message : "Could not add this link" });
+    }
+  }
+
+  async function submit() {
+    const urls = [...new Set(text.split(/[\s,]+/).map((u) => u.trim()).filter(Boolean))].slice(0, 50);
+    if (!urls.length) return;
+    setText("");
+    for (const u of urls) await addOne(u);
+  }
+
+  return (
+    <div className="space-y-2 rounded-sm border border-border bg-inset p-2">
+      <div className="flex items-center gap-1.5"><Link2 className="size-3.5 text-muted-foreground" /><span className="label-caps">Paste R2 link</span><span className="ml-auto text-[11px] text-muted-foreground">One link per line · public r2.dev / custom-domain links, or links into the connected bucket</span></div>
+      <div className="flex gap-1.5">
+        <textarea className="field min-h-9 flex-1 font-mono text-xs" rows={text.includes("\n") ? 3 : 1} placeholder="https://pub-xxxx.r2.dev/movies/my-film.mp4" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }} aria-label="Media file link" />
+        <Button size="sm" variant="brand" disabled={!text.trim() || busy} onClick={submit}>{busy ? <Loader2 className="animate-spin" /> : <Link2 />}Add</Button>
+      </div>
+      {items.length > 0 && (
+        <div className="max-h-40 space-y-1 overflow-y-auto">
+          {items.map((i) => (
+            <div key={i.id} className="rounded-sm border border-border bg-background px-2 py-1 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="min-w-0 flex-1 truncate" title={i.url}>{i.title ?? i.url}</span>
+                <span className="shrink-0">{i.state === "done" ? <span className="text-preview">Added</span> : i.state === "error" ? <span className="text-program">Error</span> : i.state === "reading" ? "Reading video…" : "Checking link…"}</span>
+                {(i.state === "done" || i.state === "error") && <button aria-label="Dismiss" onClick={() => setItems((l) => l.filter((x) => x.id !== i.id))}><X className="size-3.5" /></button>}
+              </div>
+              {i.error && <div className="mt-0.5 text-program">{i.error}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
