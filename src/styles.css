@@ -68,6 +68,9 @@
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
   --color-gold: var(--gold);
+  --color-graphic-ink: var(--graphic-ink);
+  --color-graphic-paper: var(--graphic-paper);
+  --color-graphic-night: var(--graphic-night);
 }
 
 :root {
@@ -111,6 +114,11 @@
   --brand: oklch(0.6 0.22 27);
   --brand-foreground: oklch(0.99 0 0);
   --gold: oklch(0.82 0.12 82);
+
+  /* On-air graphics artwork: fixed so the picture looks the same everywhere */
+  --graphic-ink: oklch(1 0 0);
+  --graphic-paper: oklch(0.985 0.003 250);
+  --graphic-night: oklch(0.2 0.06 280);
 
   --chart-1: oklch(0.6 0.22 27);
   --chart-2: oklch(0.72 0.17 150);
