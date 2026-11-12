@@ -10,44 +10,57 @@ export interface ProbeResult {
   thumbnail: Blob | null;
 }
 
+const EMPTY: ProbeResult = { duration: null, width: null, height: null, thumbnail: null };
+
 export function probeVideo(file: File): Promise<ProbeResult> {
+  if (!file.type.startsWith("video/") && !/\.(mp4|mov|mkv|webm|m4v|ts|mxf)$/i.test(file.name)) return Promise.resolve(EMPTY);
+  const url = URL.createObjectURL(file);
+  return probeSrc(url, false).finally(() => URL.revokeObjectURL(url));
+}
+
+/** Reads duration, size and a thumbnail from a linked file. Thumbnails need the host to allow CORS; otherwise only metadata is read. */
+export async function probeVideoUrl(url: string): Promise<ProbeResult> {
+  const withCors = await probeSrc(url, true);
+  if (withCors.duration != null) return withCors;
+  return probeSrc(url, false);
+}
+
+function probeSrc(src: string, cors: boolean): Promise<ProbeResult> {
   return new Promise((resolve) => {
-    if (!file.type.startsWith("video/") && !/\.(mp4|mov|mkv|webm|m4v|ts|mxf)$/i.test(file.name)) {
-      resolve({ duration: null, width: null, height: null, thumbnail: null });
-      return;
-    }
-    const url = URL.createObjectURL(file);
     const v = document.createElement("video");
     v.preload = "metadata";
     v.muted = true;
-    v.src = url;
+    if (cors) v.crossOrigin = "anonymous";
+    v.src = src;
     let done = false;
     const finish = (r: ProbeResult) => {
       if (done) return;
       done = true;
-      URL.revokeObjectURL(url);
+      clearTimeout(timer);
+      v.removeAttribute("src");
+      v.load();
       resolve(r);
     };
-    const timer = setTimeout(() => finish({ duration: null, width: null, height: null, thumbnail: null }), 15000);
-    v.onerror = () => {
-      clearTimeout(timer);
-      finish({ duration: null, width: null, height: null, thumbnail: null });
-    };
+    const timer = setTimeout(() => finish(Number.isFinite(v.duration) ? { ...EMPTY, duration: v.duration, width: v.videoWidth || null, height: v.videoHeight || null } : EMPTY), 15000);
+    v.onerror = () => finish(EMPTY);
     v.onloadedmetadata = () => {
       const duration = Number.isFinite(v.duration) ? v.duration : null;
       v.currentTime = Math.min(Math.max((duration ?? 10) * 0.1, 1), 120);
     };
     v.onseeked = () => {
-      clearTimeout(timer);
       const w = v.videoWidth || null;
       const h = v.videoHeight || null;
       const meta = { duration: Number.isFinite(v.duration) ? v.duration : null, width: w, height: h };
       if (!w || !h) return finish({ ...meta, thumbnail: null });
-      const canvas = document.createElement("canvas");
-      canvas.width = 480;
-      canvas.height = Math.round((480 * h) / w);
-      canvas.getContext("2d")?.drawImage(v, 0, 0, canvas.width, canvas.height);
-      canvas.toBlob((b) => finish({ ...meta, thumbnail: b }), "image/jpeg", 0.78);
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = 480;
+        canvas.height = Math.round((480 * h) / w);
+        canvas.getContext("2d")?.drawImage(v, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((b) => finish({ ...meta, thumbnail: b }), "image/jpeg", 0.78);
+      } catch {
+        finish({ ...meta, thumbnail: null });
+      }
     };
   });
 }
