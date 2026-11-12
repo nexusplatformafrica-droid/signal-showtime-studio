@@ -10,33 +10,145 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
+import { Route as AuthenticatedAdminControlRouteImport } from './routes/_authenticated/admin/control'
+import { Route as AuthenticatedAdminMediaRouteImport } from './routes/_authenticated/admin/media'
+import { Route as ApiPublicThumbnailsSplatRouteImport } from './routes/api/public/thumbnails/$'
+import { Route as ApiPublicEngineV1SplatRouteImport } from './routes/api/public/engine/v1/$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAdminRouteRoute = AuthenticatedAdminRouteRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedAdminRouteRoute,
+} as any)
+const AuthenticatedAdminControlRoute =
+  AuthenticatedAdminControlRouteImport.update({
+    id: '/control',
+    path: '/control',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
+const AuthenticatedAdminMediaRoute = AuthenticatedAdminMediaRouteImport.update({
+  id: '/media',
+  path: '/media',
+  getParentRoute: () => AuthenticatedAdminRouteRoute,
+} as any)
+const ApiPublicThumbnailsSplatRoute =
+  ApiPublicThumbnailsSplatRouteImport.update({
+    id: '/api/public/thumbnails/$',
+    path: '/api/public/thumbnails/$',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicEngineV1SplatRoute = ApiPublicEngineV1SplatRouteImport.update({
+  id: '/api/public/engine/v1/$',
+  path: '/api/public/engine/v1/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
+  '/admin/control': typeof AuthenticatedAdminControlRoute
+  '/admin/media': typeof AuthenticatedAdminMediaRoute
+  '/admin/': typeof AuthenticatedAdminIndexRoute
+  '/api/public/thumbnails/$': typeof ApiPublicThumbnailsSplatRoute
+  '/api/public/engine/v1/$': typeof ApiPublicEngineV1SplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/admin/control': typeof AuthenticatedAdminControlRoute
+  '/admin/media': typeof AuthenticatedAdminMediaRoute
+  '/admin': typeof AuthenticatedAdminIndexRoute
+  '/api/public/thumbnails/$': typeof ApiPublicThumbnailsSplatRoute
+  '/api/public/engine/v1/$': typeof ApiPublicEngineV1SplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
+  '/_authenticated/admin/control': typeof AuthenticatedAdminControlRoute
+  '/_authenticated/admin/media': typeof AuthenticatedAdminMediaRoute
+  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/api/public/thumbnails/$': typeof ApiPublicThumbnailsSplatRoute
+  '/api/public/engine/v1/$': typeof ApiPublicEngineV1SplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/reset-password'
+    | '/admin'
+    | '/admin/control'
+    | '/admin/media'
+    | '/admin/'
+    | '/api/public/thumbnails/$'
+    | '/api/public/engine/v1/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/reset-password'
+    | '/admin/control'
+    | '/admin/media'
+    | '/admin'
+    | '/api/public/thumbnails/$'
+    | '/api/public/engine/v1/$'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/reset-password'
+    | '/_authenticated/admin'
+    | '/_authenticated/admin/control'
+    | '/_authenticated/admin/media'
+    | '/_authenticated/admin/'
+    | '/api/public/thumbnails/$'
+    | '/api/public/engine/v1/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
+  ApiPublicThumbnailsSplatRoute: typeof ApiPublicThumbnailsSplatRoute
+  ApiPublicEngineV1SplatRoute: typeof ApiPublicEngineV1SplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +160,108 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/': {
+      id: '/_authenticated/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/control': {
+      id: '/_authenticated/admin/control'
+      path: '/control'
+      fullPath: '/admin/control'
+      preLoaderRoute: typeof AuthenticatedAdminControlRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/media': {
+      id: '/_authenticated/admin/media'
+      path: '/media'
+      fullPath: '/admin/media'
+      preLoaderRoute: typeof AuthenticatedAdminMediaRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/api/public/thumbnails/$': {
+      id: '/api/public/thumbnails/$'
+      path: '/api/public/thumbnails/$'
+      fullPath: '/api/public/thumbnails/$'
+      preLoaderRoute: typeof ApiPublicThumbnailsSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/engine/v1/$': {
+      id: '/api/public/engine/v1/$'
+      path: '/api/public/engine/v1/$'
+      fullPath: '/api/public/engine/v1/$'
+      preLoaderRoute: typeof ApiPublicEngineV1SplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
+interface AuthenticatedAdminRouteRouteChildren {
+  AuthenticatedAdminControlRoute: typeof AuthenticatedAdminControlRoute
+  AuthenticatedAdminMediaRoute: typeof AuthenticatedAdminMediaRoute
+  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+}
+
+const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren =
+  {
+    AuthenticatedAdminControlRoute: AuthenticatedAdminControlRoute,
+    AuthenticatedAdminMediaRoute: AuthenticatedAdminMediaRoute,
+    AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+  }
+
+const AuthenticatedAdminRouteRouteWithChildren =
+  AuthenticatedAdminRouteRoute._addFileChildren(
+    AuthenticatedAdminRouteRouteChildren,
+  )
+
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminRouteRoute: typeof AuthenticatedAdminRouteRouteWithChildren
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminRouteRoute: AuthenticatedAdminRouteRouteWithChildren,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
+  ApiPublicThumbnailsSplatRoute: ApiPublicThumbnailsSplatRoute,
+  ApiPublicEngineV1SplatRoute: ApiPublicEngineV1SplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
