@@ -105,7 +105,7 @@ async function main() {
 
   let config = null, schedule = { entries: [], playlists: [], media: [] };
   let proc = null, running = null, lastProgress = 0, stats = {};
-  let skippedKey = null, mode = "schedule", lastError = null;
+  let skippedKey = null, mode = "schedule", lastError = null, retryAt = 0;
 
   async function loadConfig() { config = await call("/config"); }
   async function loadSchedule() { schedule = await call(`/schedule?to=${encodeURIComponent(new Date(Date.now() + 24 * 3600_000).toISOString())}`); }
@@ -131,6 +131,7 @@ async function main() {
     running = target;
     let errText = "";
     p.stdout.on("data", (buf) => {
+      if (lastError?.startsWith("The streaming server") || lastError?.startsWith("FFmpeg")) lastError = null;
       for (const line of String(buf).split("\n")) {
         const [k, v] = line.split("=");
         if (!v) continue;
@@ -145,7 +146,10 @@ async function main() {
       const current = proc === p;
       if (current) proc = null;
       if (!p.mmxStopped && code !== 0) {
-        lastError = `FFmpeg stopped (code ${code}): ${errText.trim().split("\n").pop() ?? ""}`.slice(0, 480);
+        lastError = /need auth|authmod|AccessManager\.Reject/i.test(errText)
+          ? "The streaming server refused the login. Set MMX_PUBLISH_USER and MMX_PUBLISH_PASS to your Wowza live-broadcast username and password."
+          : `FFmpeg stopped (code ${code}): ${errText.trim().split("\n").pop() ?? ""}`.slice(0, 480);
+        retryAt = Date.now() + 15000;
         log(lastError);
         event("encoder_error", lastError, { severity: "error", entry_id: target.entryId, media_id: target.mediaId });
       }
@@ -167,6 +171,7 @@ async function main() {
     const want = desired();
     if (!want) { stopFfmpeg(); running = null; return; }
     if (running?.key === want.key && proc) return;
+    if (!proc && Date.now() < retryAt) return;
     stopFfmpeg();
     startFfmpeg(want);
     if (want.source === "schedule") event("programme_started", `Started ${want.title}`, { entry_id: want.entryId, media_id: want.mediaId });
