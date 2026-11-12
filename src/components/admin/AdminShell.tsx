@@ -11,6 +11,7 @@ import { useBroadcastStatus, useNow, useRealtimeInvalidate } from "@/hooks/use-s
 import { formatClock, formatDate, isEngineOnline, isOnAir, VIEWER_ACTIVE_MS } from "@/lib/broadcast";
 import { ROLE_LABELS } from "@/lib/permissions";
 import { OnAirBadge, Tally } from "@/components/broadcast/status";
+import { useWebPlayout } from "@/hooks/use-web-playout";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -45,6 +46,8 @@ export function AdminShell({ children, onSignOut }: { children: React.ReactNode;
   const { data: status } = useBroadcastStatus(channel.id);
   const onAir = now != null && isOnAir(status, now);
   const online = now != null && isEngineOnline(status, now);
+  const { pick } = useWebPlayout(now);
+  const webLive = !onAir && !!pick;
 
   useEffect(() => {
     setCollapsed(localStorage.getItem("mm-sidebar") === "1");
@@ -121,10 +124,10 @@ export function AdminShell({ children, onSignOut }: { children: React.ReactNode;
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Broadcast status bar */}
         <header className="flex h-11 shrink-0 items-center gap-3 border-b border-border bg-panel px-3">
-          <OnAirBadge onAir={onAir} engineOnline={online} />
+          <OnAirBadge onAir={onAir} engineOnline={online} webLive={webLive} />
           <div className="flex min-w-0 items-center gap-2 text-[13px]">
             <span className="label-caps hidden sm:inline">{onAir ? (status?.source === "live" ? "Live" : status?.source === "emergency" ? "Emergency" : "Program") : "Program"}</span>
-            <span className="truncate font-medium">{onAir ? status?.current_title ?? "Untitled" : online ? "Engine idle" : "Playout engine not connected"}</span>
+            <span className="truncate font-medium">{onAir ? status?.current_title ?? "Untitled" : webLive ? `${pick?.title} · website playout` : online ? "Engine idle" : "Nothing scheduled right now"}</span>
           </div>
           <div className="flex-1" />
           <button onClick={() => setPalette(true)} className="hidden h-7 items-center gap-2 rounded-sm border border-border bg-inset px-2 text-xs text-muted-foreground hover:text-foreground md:flex">

@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { OnAirBadge } from "@/components/broadcast/status";
 
-export function PublicHeader({ onAir, engineOnline }: { onAir: boolean; engineOnline: boolean }) {
+export function PublicHeader({ onAir, engineOnline, webLive = false }: { onAir: boolean; engineOnline: boolean; webLive?: boolean }) {
   return (
     <header className="sticky top-0 z-30 border-b border-border/70 bg-background/90 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-7xl items-center gap-6 px-4 md:px-6">
@@ -11,7 +11,7 @@ export function PublicHeader({ onAir, engineOnline }: { onAir: boolean; engineOn
           <Link to="/watch" className="hover:text-foreground" activeProps={{ className: "text-foreground" }}>Watch live</Link>
           <Link to="/guide" className="hover:text-foreground" activeProps={{ className: "text-foreground" }}>TV guide</Link>
         </nav>
-        <div className="ml-auto"><OnAirBadge onAir={onAir} engineOnline={engineOnline} /></div>
+        <div className="ml-auto"><OnAirBadge onAir={onAir} engineOnline={engineOnline} webLive={webLive} /></div>
       </div>
     </header>
   );

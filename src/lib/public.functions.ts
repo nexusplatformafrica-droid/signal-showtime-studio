@@ -83,3 +83,50 @@ export const viewerHeartbeat = createServerFn({ method: "POST" })
     }
     return { ok: true };
   });
+
+/**
+ * Website playout bundle: published programmes running now or in the next 6 hours, with a
+ * playable link for each scheduled file. Only media referenced by published entries is exposed.
+ */
+export const getWebPlayout = createServerFn({ method: "GET" }).handler(async () => {
+  const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+  const serverTime = Date.now();
+  const empty = { serverTime, entries: [], media: [], playlists: [] };
+  const { data: channel } = await db.from("channels").select("id").eq("slug", CHANNEL_SLUG).maybeSingle();
+  if (!channel) return empty;
+  const { data: entries } = await db
+    .from("schedule_entries")
+    .select("id, title, media_id, playlist_id, starts_at, ends_at, priority")
+    .eq("channel_id", channel.id)
+    .eq("status", "published")
+    .gt("ends_at", new Date(serverTime).toISOString())
+    .lte("starts_at", new Date(serverTime + 6 * 3600_000).toISOString())
+    .order("starts_at")
+    .limit(200);
+  if (!entries?.length) return empty;
+  const playlistIds = [...new Set(entries.map((e) => e.playlist_id).filter((x): x is string => !!x))];
+  const [{ data: playlists }, { data: items }] = playlistIds.length
+    ? await Promise.all([
+        db.from("playlists").select("id, repeat").in("id", playlistIds),
+        db.from("playlist_items").select("playlist_id, media_id, position").in("playlist_id", playlistIds).order("position"),
+      ])
+    : [{ data: [] as { id: string; repeat: boolean }[] }, { data: [] as { playlist_id: string; media_id: string; position: number }[] }];
+  const mediaIds = [...new Set([...entries.map((e) => e.media_id).filter((x): x is string => !!x), ...(items ?? []).map((i) => i.media_id)])];
+  const { data: media } = mediaIds.length
+    ? await db.from("media_assets").select("id, title, storage_key, source_url, duration_seconds, status, available").eq("channel_id", channel.id).in("id", mediaIds)
+    : { data: [] as never[] };
+  const { getR2, presignGet } = await import("@/lib/r2.server");
+  const r2 = getR2();
+  const mediaOut = await Promise.all(
+    (media ?? []).map(async (m) => {
+      const url = m.status !== "ready" || !m.available ? null : m.storage_key ? (r2 ? await presignGet(m.storage_key, 8 * 3600) : null) : m.source_url;
+      return { id: m.id, title: m.title, duration_seconds: m.duration_seconds == null ? null : Number(m.duration_seconds), playable: !!url, url };
+    }),
+  );
+  return {
+    serverTime,
+    entries,
+    media: mediaOut,
+    playlists: (playlists ?? []).map((p) => ({ id: p.id, repeat: p.repeat, items: (items ?? []).filter((i) => i.playlist_id === p.id).map((i) => ({ media_id: i.media_id })) })),
+  };
+});

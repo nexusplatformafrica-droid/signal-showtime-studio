@@ -5,12 +5,13 @@ export function Tally({ tone, pulse, className }: { tone: "program" | "preview" 
   return <span className={cn("inline-block size-2 shrink-0 rounded-full", color, pulse && "animate-tally", className)} aria-hidden />;
 }
 
-export function OnAirBadge({ onAir, engineOnline, size = "sm" }: { onAir: boolean; engineOnline: boolean; size?: "sm" | "lg" }) {
+/** ON AIR = the playout engine confirms it is broadcasting. LIVE = the website is playing the schedule itself. */
+export function OnAirBadge({ onAir, engineOnline, webLive = false, size = "sm" }: { onAir: boolean; engineOnline: boolean; webLive?: boolean; size?: "sm" | "lg" }) {
   const base = size === "lg" ? "h-7 px-3 text-xs" : "h-5 px-2 text-[10px]";
-  if (onAir)
+  if (onAir || webLive)
     return (
       <span className={cn("inline-flex items-center gap-1.5 rounded-sm bg-program font-bold uppercase tracking-[0.14em] text-program-foreground", base)}>
-        <span className="size-1.5 rounded-full bg-program-foreground animate-tally" /> On Air
+        <span className="size-1.5 rounded-full bg-program-foreground animate-tally" /> {onAir ? "On Air" : "Live"}
       </span>
     );
   return (

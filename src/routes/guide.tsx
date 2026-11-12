@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { useWebPlayout } from "@/hooks/use-web-playout";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { publicStationQuery } from "@/components/public/station-query";
 import { PublicFooter, PublicHeader } from "@/components/public/PublicChrome";
@@ -29,6 +30,7 @@ function Guide() {
   const tz = data.channel?.timezone ?? "Africa/Kampala";
   const onAir = now != null && isOnAir(data.status, now);
   const online = now != null && isEngineOnline(data.status, now);
+  const { pick } = useWebPlayout(now);
   const today = toZoned(now ?? new Date(), tz).date;
   const [day, setDay] = useState<string | null>(null);
   const selected = day ?? today;
@@ -42,7 +44,7 @@ function Guide() {
 
   return (
     <div className="theme-public min-h-screen bg-background text-foreground">
-      <PublicHeader onAir={onAir} engineOnline={online} />
+      <PublicHeader onAir={onAir} engineOnline={online} webLive={!onAir && !!pick} />
       <main className="mx-auto max-w-5xl px-4 py-10 md:px-6">
         <h1 className="font-display text-4xl font-black uppercase tracking-tight">TV guide</h1>
         <p className="mt-2 text-sm text-muted-foreground">All times East Africa Time (Kampala, UTC+3).</p>

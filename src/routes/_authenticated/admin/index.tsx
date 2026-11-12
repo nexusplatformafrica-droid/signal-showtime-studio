@@ -11,6 +11,8 @@ import { useIssueCommand } from "@/hooks/use-commands";
 import { detectScheduleIssues, findNowNext, formatBytes, formatDate, formatDuration, formatTime, isEngineOnline, isOnAir, toZoned, zonedToUtc, VIEWER_ACTIVE_MS } from "@/lib/broadcast";
 import { Metric, OnAirBadge, StatusChip, Tally } from "@/components/broadcast/status";
 import { HlsPlayer } from "@/components/broadcast/HlsPlayer";
+import { ScheduledPlayer } from "@/components/broadcast/ScheduledPlayer";
+import { useWebPlayout } from "@/hooks/use-web-playout";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/admin/PageHeader";
@@ -28,6 +30,9 @@ function Overview() {
   const onAir = now != null && isOnAir(status, now);
   const online = now != null && isEngineOnline(status, now);
   const issue = useIssueCommand();
+  // Without an engine on air, viewers see the website playing the published schedule.
+  const { web, pick } = useWebPlayout(now);
+  const webLive = !onAir && !!pick;
 
   // Stable windows (minute resolution) so queries don't refetch every tick.
   const minute = Math.floor((now ?? 0) / 60000);
@@ -78,9 +83,10 @@ function Overview() {
     },
   });
 
-  const pos = Number(status?.position_seconds ?? 0);
-  const dur = Number(status?.duration_seconds ?? 0);
-  const pct = onAir && dur > 0 ? Math.min(100, (pos / dur) * 100) : 0;
+  const pos = onAir ? Number(status?.position_seconds ?? 0) : (pick?.offset ?? 0);
+  const dur = onAir ? Number(status?.duration_seconds ?? 0) : Number(pick?.media.duration_seconds ?? 0);
+  const live = onAir || webLive;
+  const pct = live && dur > 0 ? Math.min(100, (pos / dur) * 100) : 0;
   const nextIn = next && now ? (+new Date(next.starts_at) - now) / 1000 : null;
   const activeInput = stats.data?.inputs.find((i) => i.id === status?.active_live_input_id) ?? stats.data?.inputs.find((i) => i.connected);
   const heartbeatAge = status?.last_heartbeat_at && now ? Math.round((now - +new Date(status.last_heartbeat_at)) / 1000) : null;
@@ -106,18 +112,20 @@ function Overview() {
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
         {/* Program */}
         <section className="panel">
-          <div className="panel-header"><span className="flex items-center gap-2">Program output <OnAirBadge onAir={onAir} engineOnline={online} /></span><span className="timecode normal-case tracking-normal">{status?.output_resolution ?? "—"} · {status?.output_bitrate_kbps ? `${(status.output_bitrate_kbps / 1000).toFixed(1)} Mbps` : "—"}</span></div>
+          <div className="panel-header"><span className="flex items-center gap-2">Program output <OnAirBadge onAir={onAir} engineOnline={online} webLive={webLive} /></span><span className="timecode normal-case tracking-normal">{status?.output_resolution ?? "—"} · {status?.output_bitrate_kbps ? `${(status.output_bitrate_kbps / 1000).toFixed(1)} Mbps` : "—"}</span></div>
           <div className="grid gap-0 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-            <div className="monitor m-2 md:mr-0" data-tally={onAir ? "program" : undefined}>
+            <div className="monitor m-2 md:mr-0" data-tally={live ? "program" : undefined}>
               {onAir && channel.hls_url ? (
                 <HlsPlayer src={playbackUrl(channel.hls_url, channel.slug)} poster={slate} controls={false} />
+              ) : webLive && web ? (
+                <ScheduledPlayer bundle={web.bundle} skewMs={web.skewMs} poster={slate} controls={false} />
               ) : (
                 <div className="absolute inset-0">
                   <img src={slate} alt="" className="h-full w-full object-cover opacity-30" />
                   <div className="absolute inset-0 grid place-items-center text-center">
                     <div>
-                      <div className="label-caps">{online ? "Engine online — not on air" : "No signal from playout engine"}</div>
-                      {!online && <Link to="/admin/settings" search={{ tab: "engine" }} className="mt-1 inline-block text-xs text-info hover:underline">Connect the playout engine</Link>}
+                      <div className="label-caps">{online ? "Engine online — not on air" : "Nothing playable is scheduled right now"}</div>
+                      {!online && <Link to="/admin/schedule" className="mt-1 inline-block text-xs text-info hover:underline">Schedule a programme</Link>}
                     </div>
                   </div>
                 </div>
@@ -125,10 +133,10 @@ function Overview() {
             </div>
             <div className="flex flex-col p-3">
               <div className="label-caps">Now on air</div>
-              <div className="mt-1 line-clamp-2 font-display text-lg font-bold leading-tight">{onAir ? status?.current_title ?? "Untitled" : "—"}</div>
-              <div className="mt-1 text-xs text-muted-foreground">{onAir ? `Source: ${status?.source}` : "The channel is not broadcasting."}</div>
+              <div className="mt-1 line-clamp-2 font-display text-lg font-bold leading-tight">{onAir ? status?.current_title ?? "Untitled" : webLive ? pick?.title : "—"}</div>
+              <div className="mt-1 text-xs text-muted-foreground">{onAir ? `Source: ${status?.source}` : webLive ? "Playing on the website from the schedule" : "The channel is not broadcasting."}</div>
               <div className="mt-3 h-1 overflow-hidden rounded-full bg-inset"><div className="h-full bg-program transition-[width]" style={{ width: `${pct}%` }} /></div>
-              <div className="timecode mt-1 flex justify-between text-[11px] text-muted-foreground"><span>{onAir ? formatDuration(pos) : "--:--"}</span><span>{onAir && dur ? `-${formatDuration(dur - pos)}` : "--:--"}</span></div>
+              <div className="timecode mt-1 flex justify-between text-[11px] text-muted-foreground"><span>{live ? formatDuration(pos) : "--:--"}</span><span>{live && dur ? `-${formatDuration(dur - pos)}` : "--:--"}</span></div>
               <div className="mt-auto border-t border-border pt-3">
                 <div className="label-caps">Next scheduled</div>
                 {next ? (
