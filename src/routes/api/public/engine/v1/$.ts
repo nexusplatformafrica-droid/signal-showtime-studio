@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
+import type { TablesInsert } from "@/integrations/supabase/types";
 
 /**
  * MOVIE MAX Playout Engine API (v1).
@@ -140,8 +141,9 @@ async function handle(request: Request, splat: string) {
     if (!parsed.success) return json({ error: "invalid heartbeat", issues: parsed.error.flatten() }, 400);
     const { live_inputs, ...hb } = parsed.data;
     const now = new Date().toISOString();
-    const clean = Object.fromEntries(Object.entries(hb).filter(([, v]) => v !== undefined)) as typeof hb & { on_air: boolean };
-    const { error } = await db.from("broadcast_status").upsert({ ...clean, channel_id: channelId, last_heartbeat_at: now, updated_at: now });
+    const clean = Object.fromEntries(Object.entries(hb).filter(([, v]) => v !== undefined));
+    const row = { ...clean, channel_id: channelId, last_heartbeat_at: now, updated_at: now } as TablesInsert<"broadcast_status">;
+    const { error } = await db.from("broadcast_status").upsert(row);
     if (error) return json({ error: "could not store heartbeat" }, 500);
     for (const li of live_inputs ?? []) {
       await db.from("live_inputs").update({
