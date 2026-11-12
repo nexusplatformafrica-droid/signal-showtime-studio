@@ -38,7 +38,6 @@ function GraphicsPage() {
   const [replay, setReplay] = useState<GraphicsReplay | null>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const studioNow = useNow(15_000);
-  const studioClock = useNow(active_is_news_tick());
   const { web } = useWebPlayout(null);
 
   const overlays = useQuery({
@@ -175,7 +174,6 @@ function GraphicsPage() {
         <fieldset disabled={!canEdit} className="px-3 pb-3">
           <NewsStudio
             config={activeCfg}
-            now={studioClock ?? 0}
             timezone={channel.timezone}
             onChange={setCfg}
             onUpload={(f) => uploadImage(f, "image_url")}

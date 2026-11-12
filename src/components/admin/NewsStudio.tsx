@@ -5,12 +5,12 @@ import { TRANSITIONS } from "@/lib/brand-cards";
 import { NEWS_DESIGNS, NEWS_TEMPLATES, newsDesignById, newsHeadlines, newsTextFor } from "@/lib/news-cards";
 import type { OverlayConfig } from "@/lib/graphics";
 import { Button } from "@/components/ui/button";
+import { useNow } from "@/hooks/use-station";
 import { cn } from "@/lib/utils";
 import slate from "@/assets/standby-slate.jpg";
 
 interface Props {
   config: OverlayConfig;
-  now: number;
   timezone: string;
   onChange: (patch: OverlayConfig) => void;
   onUpload: (file: File) => void;
@@ -20,7 +20,8 @@ interface Props {
 }
 
 /** Branding studio for the news lower third: design, text, logo, colours, transitions and timing, all previewed live. */
-export function NewsStudio({ config, now, timezone, onChange, onUpload, onPlay, enabled, onEnable }: Props) {
+export function NewsStudio({ config, timezone, onChange, onUpload, onPlay, enabled, onEnable }: Props) {
+  const now = useNow(1000) ?? 0;
   const d = newsDesignById(config.design);
   const text = newsTextFor(config, now, timezone);
   const headlines = newsHeadlines(config.title);
