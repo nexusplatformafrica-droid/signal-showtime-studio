@@ -1,4 +1,4 @@
-export function PageHeader({ title, description, actions, children }: { title: string; description?: string; actions?: React.ReactNode; children?: React.ReactNode }) {
+export function PageHeader({ title, description, actions, children }: { title: string; description?: string | undefined; actions?: React.ReactNode; children?: React.ReactNode }) {
   return (
     <div className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur-sm">
       <div className="flex min-h-11 flex-wrap items-center gap-3 px-4 py-1.5">

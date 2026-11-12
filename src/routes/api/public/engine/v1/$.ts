@@ -140,12 +140,13 @@ async function handle(request: Request, splat: string) {
     if (!parsed.success) return json({ error: "invalid heartbeat", issues: parsed.error.flatten() }, 400);
     const { live_inputs, ...hb } = parsed.data;
     const now = new Date().toISOString();
-    const { error } = await db.from("broadcast_status").upsert({ channel_id: channelId, ...hb, last_heartbeat_at: now, updated_at: now });
+    const clean = Object.fromEntries(Object.entries(hb).filter(([, v]) => v !== undefined)) as typeof hb & { on_air: boolean };
+    const { error } = await db.from("broadcast_status").upsert({ ...clean, channel_id: channelId, last_heartbeat_at: now, updated_at: now });
     if (error) return json({ error: "could not store heartbeat" }, 500);
     for (const li of live_inputs ?? []) {
       await db.from("live_inputs").update({
         connected: li.connected, bitrate_kbps: li.bitrate_kbps ?? null, resolution: li.resolution ?? null,
-        fps: li.fps ?? null, audio_ok: li.audio_ok ?? null, last_seen_at: li.connected ? now : undefined,
+        fps: li.fps ?? null, audio_ok: li.audio_ok ?? null, ...(li.connected ? { last_seen_at: now } : {}),
       }).eq("id", li.id).eq("channel_id", channelId);
     }
     return json({ ok: true, server_time: now });
@@ -186,7 +187,7 @@ async function handle(request: Request, splat: string) {
     const { error } = await db
       .from("broadcast_commands")
       .update({ status: parsed.data.status, result: parsed.data.result ?? null, completed_at: new Date().toISOString() })
-      .eq("id", resultMatch[1])
+      .eq("id", resultMatch[1] ?? "")
       .eq("channel_id", channelId);
     if (error) return json({ error: "could not store result" }, 500);
     return json({ ok: true });
@@ -194,7 +195,7 @@ async function handle(request: Request, splat: string) {
 
   const mediaMatch = splat.match(/^media\/([0-9a-f-]{36})\/url$/);
   if (mediaMatch && request.method === "GET") {
-    const { data: m } = await db.from("media_assets").select("id, storage_key, status").eq("id", mediaMatch[1]).eq("channel_id", channelId).maybeSingle();
+    const { data: m } = await db.from("media_assets").select("id, storage_key, status").eq("id", mediaMatch[1] ?? "").eq("channel_id", channelId).maybeSingle();
     if (!m) return json({ error: "not found" }, 404);
     return json({ id: m.id, url: await signed(m.storage_key, 6 * 3600) });
   }

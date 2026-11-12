@@ -95,10 +95,10 @@ export interface UploadFns {
   complete: (a: { data: { mediaId: string; parts: { partNumber: number; etag: string }[] } }) => Promise<{ ok: boolean; size: number }>;
 }
 
-export async function uploadMultipart(opts: { file: File; mediaId: string; replace?: boolean; fns: UploadFns; onProgress: (pct: number) => void; signal: AbortSignal }) {
+export async function uploadMultipart(opts: { file: File; mediaId: string; replace?: boolean | undefined; fns: UploadFns; onProgress: (pct: number) => void; signal: AbortSignal }) {
   const { file, mediaId, fns, onProgress, signal } = opts;
   const total = Math.max(1, Math.ceil(file.size / PART_SIZE));
-  const started = await fns.start({ data: { mediaId, filename: file.name, contentType: file.type || "application/octet-stream", replace: opts.replace } });
+  const started = await fns.start({ data: { mediaId, filename: file.name, contentType: file.type || "application/octet-stream", ...(opts.replace ? { replace: true } : {}) } });
   const done = new Map<number, string>();
   for (const p of started.parts) if (p.size === Math.min(PART_SIZE, file.size - (p.partNumber - 1) * PART_SIZE)) done.set(p.partNumber, p.etag);
   const progress = new Map<number, number>();
@@ -112,7 +112,8 @@ export async function uploadMultipart(opts: { file: File; mediaId: string; repla
       if (signal.aborted) throw new Error("Upload paused");
       const batch = pending.slice(cursor, cursor + 1);
       cursor += 1;
-      const [signed] = await fns.sign({ data: { mediaId, partNumbers: batch } });
+      const signed = (await fns.sign({ data: { mediaId, partNumbers: batch } }))[0];
+      if (!signed) throw new Error("Storage did not return an upload URL");
       const start = (signed.partNumber - 1) * PART_SIZE;
       const blob = file.slice(start, Math.min(start + PART_SIZE, file.size));
       let attempt = 0;

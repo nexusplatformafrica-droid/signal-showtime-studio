@@ -40,7 +40,7 @@ function Overview() {
   const upcoming = published.filter((e) => +new Date(e.starts_at) > (now ?? 0)).slice(0, 8);
   const issues = useMemo(() => {
     const future = entries.filter((e) => +new Date(e.ends_at) > (now ?? 0));
-    return detectScheduleIssues(future, { media: mediaIndex.data, windowStart: new Date(minute * 60000).toISOString(), windowEnd: to });
+    return detectScheduleIssues(future, { ...(mediaIndex.data ? { media: mediaIndex.data } : {}), windowStart: new Date(minute * 60000).toISOString(), windowEnd: to });
   }, [entries, mediaIndex.data, minute, to, now]);
 
   useRealtimeInvalidate("broadcast_events", [["events-recent", channel.id]], `channel_id=eq.${channel.id}`);

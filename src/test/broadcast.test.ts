@@ -91,7 +91,7 @@ describe("recurring programmes", () => {
     expect(occ.map((o) => o.starts_at.toISOString())).toEqual([
       "2026-11-12T17:00:00.000Z", "2026-11-13T17:00:00.000Z", "2026-11-14T17:00:00.000Z",
     ]);
-    expect(occ[0].ends_at.toISOString()).toBe("2026-11-12T18:00:00.000Z");
+    expect(occ[0]?.ends_at.toISOString()).toBe("2026-11-12T18:00:00.000Z");
   });
   it("repeats weekly on the starting weekday", () => {
     const occ = expandRecurrence({ freq: "weekly", startDate: "2026-11-12", endDate: "2026-11-30", startTime: "21:00", durationMinutes: 30 });

@@ -90,9 +90,10 @@ function ControlRoom() {
       const t = e.target as HTMLElement;
       if (t.closest("input, textarea, select, [contenteditable]")) return;
       const map: Record<string, () => void> = { F5: () => send("play"), F6: () => send("pause"), F8: () => send("skip"), F9: () => void take(), F10: () => send("return_to_schedule") };
-      if (map[e.key]) {
+      const fn = map[e.key];
+      if (fn) {
         e.preventDefault();
-        map[e.key]();
+        fn();
       }
     };
     window.addEventListener("keydown", onKey);

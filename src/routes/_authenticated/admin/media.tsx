@@ -213,7 +213,10 @@ function MediaEditor({ media, onClose, folders, canEdit, onChanged, storageReady
   async function save() {
     if (!media) return;
     const { error } = await supabase.from("media_assets").update({ ...form, tags: tags.split(",").map((t) => t.trim()).filter(Boolean).slice(0, 30) }).eq("id", media.id);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success("Saved");
     onChanged();
     onClose();
@@ -290,10 +293,10 @@ interface UploadItem {
   file: File;
   progress: number;
   state: "queued" | "probing" | "uploading" | "done" | "error" | "paused";
-  error?: string;
-  duplicate?: string;
-  mediaId?: string;
-  ctl?: AbortController;
+  error?: string | undefined;
+  duplicate?: string | undefined;
+  mediaId?: string | undefined;
+  ctl?: AbortController | undefined;
 }
 
 function UploadDialog({ open, onOpenChange, folderId, onDone }: { open: boolean; onOpenChange: (o: boolean) => void; folderId: string | null; onDone: () => void }) {
