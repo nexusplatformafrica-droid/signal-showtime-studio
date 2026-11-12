@@ -6,6 +6,7 @@ import { PublicFooter, PublicHeader } from "@/components/public/PublicChrome";
 import { playbackUrl } from "@/lib/stream-url";
 import { LivePlayer } from "@/components/public/LivePlayer";
 import { useNow } from "@/hooks/use-station";
+import { useWebPlayout } from "@/hooks/use-web-playout";
 import { CATEGORY_LABELS } from "@/lib/labels";
 import { findNowNext, formatDate, formatTime, isEngineOnline, isOnAir } from "@/lib/broadcast";
 import { Button } from "@/components/ui/button";
@@ -33,32 +34,36 @@ function Home() {
   const tz = ch?.timezone ?? "Africa/Kampala";
   const onAir = now != null && isOnAir(data.status, now);
   const online = now != null && isEngineOnline(data.status, now);
+  const { web, pick } = useWebPlayout(now);
+  // No engine on air: the website plays the published schedule itself.
+  const webLive = !onAir && !!pick;
   const schedule = data.schedule.filter((p) => !p.is_commercial_break);
   const { current, next } = findNowNext(schedule, now ?? 0);
   // Only call it "now showing" when the engine confirms the scheduled programme is what is on air.
   const confirmedCurrent = onAir && data.status?.source === "schedule" ? schedule.find((p) => p.id === data.status?.current_entry_id) ?? null : null;
-  const nowTitle = onAir ? (confirmedCurrent?.title ?? data.status?.current_title ?? "Live broadcast") : null;
+  const webCurrent = webLive ? schedule.find((p) => p.id === pick?.entry.id) ?? null : null;
+  const nowTitle = onAir ? (confirmedCurrent?.title ?? data.status?.current_title ?? "Live broadcast") : webLive ? (pick?.title ?? null) : null;
   const upcoming = schedule.filter((p) => now != null && +new Date(p.starts_at) > now).slice(0, 8);
   const featured = [...new Map(schedule.filter((p) => p.thumbnail_url).map((p) => [p.title, p])).values()].slice(0, 6);
 
   return (
     <div className="theme-public min-h-screen bg-background text-foreground">
-      <PublicHeader onAir={onAir} engineOnline={online} />
+      <PublicHeader onAir={onAir} engineOnline={online} webLive={webLive} />
       <main>
         <section className="relative overflow-hidden border-b border-border/70">
           <img src={slate} alt="" className="absolute inset-0 h-full w-full object-cover opacity-25" width={1920} height={1088} />
           <div className="absolute inset-0 hero-scrim" />
           <div className="relative mx-auto grid max-w-7xl gap-8 px-4 py-10 md:px-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:py-14">
-            <div className="monitor rounded-sm shadow-2xl" data-tally={onAir ? "program" : undefined}>
-              {ch && <LivePlayer channelId={ch.id} src={playbackUrl(ch.hls_url, ch.slug)} onAir={onAir} className="absolute inset-0" />}
+            <div className="monitor rounded-sm shadow-2xl" data-tally={onAir || webLive ? "program" : undefined}>
+              {ch && <LivePlayer channelId={ch.id} src={playbackUrl(ch.hls_url, ch.slug)} onAir={onAir} web={web} className="absolute inset-0" />}
             </div>
             <div className="flex flex-col justify-center">
-              <div className="label-caps text-gold">{onAir ? "Now on MOVIE MAX" : "MOVIE MAX"}</div>
+              <div className="label-caps text-gold">{onAir || webLive ? "Now on MOVIE MAX" : "MOVIE MAX"}</div>
               <h1 className="mt-2 font-display text-4xl font-black uppercase leading-[0.95] tracking-tight md:text-5xl" style={{ fontStretch: "85%" }}>
                 {nowTitle ?? "Live TV, all day, every day"}
               </h1>
               <p className="mt-4 max-w-md text-muted-foreground">
-                {onAir ? (confirmedCurrent?.description ?? ch?.description) : current ? `Scheduled now: ${current.title}. The channel is not broadcasting at the moment.` : ch?.description}
+                {onAir ? (confirmedCurrent?.description ?? ch?.description) : webLive ? (webCurrent?.description ?? ch?.description) : current ? `Scheduled now: ${current.title}. The channel is not broadcasting at the moment.` : ch?.description}
               </p>
               <div className="mt-6 flex flex-wrap gap-2">
                 <Button asChild variant="brand" size="lg"><Link to="/watch"><Play />Watch live</Link></Button>
