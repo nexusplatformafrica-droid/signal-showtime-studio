@@ -121,6 +121,21 @@ function EndpointsPage() {
       <div className="grid gap-3 p-3 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="space-y-3">
           <section className="panel">
+            <div className="panel-header">Send the channel to Wowza with OBS (Windows or Mac)</div>
+            <EndpointRow label="Programme output page" value={site ? `${site}/output` : null} hint="Picture + graphics + sound, exactly as on the website." />
+            <EndpointRow label="OBS server" value={d.rtmp_url || null} />
+            <EndpointRow label="OBS stream key" value={d.stream_name || null} />
+            <ol className="list-decimal space-y-1.5 py-3 pl-8 pr-3 text-xs text-muted-foreground">
+              <li>Install <span className="text-foreground">OBS Studio</span> (free) on a computer that stays switched on.</li>
+              <li>In <span className="text-foreground">Sources</span> click <span className="text-foreground">+ → Browser</span>, paste the output page link, set width <span className="timecode text-foreground">1920</span> and height <span className="timecode text-foreground">1080</span>, and tick <span className="text-foreground">Control audio via OBS</span>.</li>
+              <li><span className="text-foreground">Settings → Video:</span> both resolutions 1920×1080, 25 fps. <span className="text-foreground">Settings → Output:</span> bitrate 3000 Kbps, keyframe interval 2 s.</li>
+              <li><span className="text-foreground">Settings → Stream:</span> Service <span className="text-foreground">Custom</span>, paste the server and stream key, tick <span className="text-foreground">Use authentication</span>, username <span className="timecode text-foreground">{d.username || d.stream_name || "—"}</span> and your Wowza <span className="text-foreground">Live Broadcast password</span>.</li>
+              <li>Click <span className="text-foreground">Start Streaming</span>. The schedule and graphics then play on Wowza automatically — you never touch OBS again.</li>
+            </ol>
+            <div className="border-t border-border/60 bg-inset px-3 py-2 text-[11px] text-muted-foreground">Your Wowza server only receives streams; it can't play the schedule by itself and doesn't accept video straight from a browser, so one computer running OBS (or the playout engine) has to send it.</div>
+          </section>
+
+          <section className="panel">
             <div className="panel-header">Public endpoints</div>
             <EndpointRow label="Public HLS stream (.m3u8)" value={publicHls} hint="Use in VLC, Android Media3/ExoPlayer, Smart TV apps and HLS.js." />
             {relayed && <EndpointRow label="Origin stream (http)" value={channel.hls_url} hint="Your provider's direct link. The secure link above relays it so https websites can play it." />}
