@@ -390,12 +390,24 @@ function CommandBlock({ title, code }: { title: string; code: string }) {
   );
 }
 
+/** Railway start command for the stock node image: installs FFmpeg, fetches the newest engine from this site, runs it. */
+function railwayStartCommand(origin: string): string {
+  return `/bin/sh -c "apt-get update -qq && apt-get install -y -qq ffmpeg curl ca-certificates && curl -fsSLo /tmp/movie-max-engine.mjs ${origin}/engine/movie-max-engine.mjs && exec node /tmp/movie-max-engine.mjs"`;
+}
+
 /** Step-by-step setup for the downloadable playout engine (public/engine/movie-max-engine.mjs). */
 function RunEngineGuide({ origin, lastError }: { origin: string; lastError: string | null }) {
-  const [os, setOs] = useState<"linux" | "windows">("linux");
+  const [os, setOs] = useState<"railway" | "linux" | "windows">("railway");
   const isPreview = /id-preview--|lovableproject\.com|localhost/.test(origin);
   const api = `${origin}/api/public/engine/v1`;
   const file = `${origin}/engine/movie-max-engine.mjs`;
+  const railwayVars = [
+    `MMX_API=${api}`,
+    "MMX_TOKEN=mmx_eng_PASTE_YOUR_TOKEN",
+    "MMX_OUTPUT=rtmp",
+    "MMX_HOST=railway",
+  ].join("\n");
+  const railwayStart = railwayStartCommand(origin);
   const linux = [
     "# 1) Install Node.js 20 and FFmpeg (Ubuntu/Debian)",
     "curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -",
@@ -405,12 +417,11 @@ function RunEngineGuide({ origin, lastError }: { origin: string; lastError: stri
     "sudo mkdir -p /opt/moviemax && cd /opt/moviemax",
     `sudo curl -fsSLo movie-max-engine.mjs ${file}`,
     "",
-    "# 3) Save your settings (paste your engine token and Wowza live password)",
+    "# 3) Save your settings (paste your engine token)",
     "sudo tee /opt/moviemax/engine.env >/dev/null <<'ENV'",
     `MMX_API=${api}`,
     "MMX_TOKEN=mmx_eng_PASTE_YOUR_TOKEN",
-    "MMX_PUBLISH_USER=sykapjxrcp",
-    "MMX_PUBLISH_PASS=YOUR_WOWZA_LIVE_PASSWORD",
+    "MMX_OUTPUT=rtmp",
     "ENV",
     "",
     "# 4) Keep it running 24/7 (starts again after reboots and crashes)",
@@ -441,24 +452,37 @@ function RunEngineGuide({ origin, lastError }: { origin: string; lastError: stri
     `curl.exe -fsSLo movie-max-engine.mjs ${file}`,
     `$env:MMX_API="${api}"`,
     '$env:MMX_TOKEN="mmx_eng_PASTE_YOUR_TOKEN"',
-    '$env:MMX_PUBLISH_USER="sykapjxrcp"',
-    '$env:MMX_PUBLISH_PASS="YOUR_WOWZA_LIVE_PASSWORD"',
     "node movie-max-engine.mjs",
   ].join("\n");
   return (
     <section className="panel lg:col-span-2">
       <div className="panel-header">Run the playout engine
         <span className="flex items-center gap-1">
-          {(["linux", "windows"] as const).map((o) => <button key={o} onClick={() => setOs(o)} className={cn("rounded-sm px-2 py-0.5 text-[11px]", os === o ? "bg-accent text-foreground" : "text-muted-foreground")}>{o === "linux" ? "Linux server (24/7)" : "Windows PC (testing)"}</button>)}
+          {(["railway", "linux", "windows"] as const).map((o) => <button key={o} onClick={() => setOs(o)} className={cn("rounded-sm px-2 py-0.5 text-[11px]", os === o ? "bg-accent text-foreground" : "text-muted-foreground")}>{o === "railway" ? "Railway (24/7)" : o === "linux" ? "Linux server (24/7)" : "Windows PC (testing)"}</button>)}
           <a href="/engine/movie-max-engine.mjs" download className="ml-1 flex items-center gap-1 rounded-sm px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"><Download className="size-3" />Download</a>
         </span>
       </div>
       <div className="space-y-3 p-3 text-xs">
-        <p className="text-muted-foreground">This small program plays your published schedule with FFmpeg and sends it to Wowza. Wowza only receives and delivers the stream, so the engine must run on a computer that stays on — a small Linux server (VPS, about $5/month) is best. Generate a token above, then run:</p>
-        {isPreview && <div className="rounded-sm border border-warn/40 bg-warn/10 p-2 text-warn">Publish the site first, then open this page on your published address — the commands below will use it automatically. The preview address is not reachable from your server.</div>}
+        <p className="text-muted-foreground">This small program plays your published schedule with FFmpeg and sends it to your streaming server (HostHerb). HostHerb only receives and delivers the stream, so the engine must run somewhere that never switches off. Generate a token above, then follow the steps.</p>
+        {isPreview && <div className="rounded-sm border border-warn/40 bg-warn/10 p-2 text-warn">Publish the site first, then open this page on your published address — the steps below will use it automatically. The preview address is not reachable from your server.</div>}
         {lastError && <div className="rounded-sm border border-program/40 bg-program/10 p-2 text-program">Engine reported: {lastError}</div>}
-        <CommandBlock title={os === "linux" ? "Ubuntu / Debian server" : "Windows PowerShell"} code={os === "linux" ? linux : windows} />
-        <p className="text-muted-foreground">Your Wowza server requires a login to receive video. Set a "Live Broadcast &amp; FTP Password" in your Wowza panel and use it as <code>MMX_PUBLISH_PASS</code>; the username is your publish point name. The password stays on your server — never enter it on this website.</p>
+        {os === "railway" ? (
+          <>
+            <ol className="list-decimal space-y-1 pl-4 text-muted-foreground">
+              <li>Sign in at <a className="text-foreground underline" href="https://railway.com" target="_blank" rel="noreferrer">railway.com</a>. The trial credit is enough to test; for 24/7 you need the Hobby plan (paid by usage).</li>
+              <li><b className="text-foreground">New Project → Empty Project</b>, then <b className="text-foreground">Create → Docker Image</b> and type <code>node:20-bookworm-slim</code>.</li>
+              <li>Open the new service → <b className="text-foreground">Variables → Raw Editor</b>, paste the variables below and put your engine token in place of <code>mmx_eng_PASTE_YOUR_TOKEN</code>.</li>
+              <li><b className="text-foreground">Settings → Deploy → Custom Start Command</b>: paste the start command below. Set <b className="text-foreground">Restart Policy</b> to <i>Always</i> and leave <i>Serverless / sleep</i> off.</li>
+              <li>Press <b className="text-foreground">Deploy</b>. In <b className="text-foreground">Deploy Logs</b> you should see "Pushing to rtmps://source.hostherb.com…". This page then shows the engine <i>Online</i> and the control room shows ON AIR.</li>
+            </ol>
+            <CommandBlock title="Railway variables" code={railwayVars} />
+            <CommandBlock title="Railway custom start command" code={railwayStart} />
+            <p className="text-muted-foreground">No public domain or port is needed — the engine only sends out. It downloads the newest engine every time it starts, so a redeploy picks up updates.</p>
+          </>
+        ) : (
+          <CommandBlock title={os === "linux" ? "Ubuntu / Debian server" : "Windows PowerShell"} code={os === "linux" ? linux : windows} />
+        )}
+        <p className="text-muted-foreground">The HostHerb server address and stream key are sent to the engine automatically from Streaming Endpoints — you never type them on the server. Only if a streaming server asks for a login, add <code>MMX_PUBLISH_USER</code> and <code>MMX_PUBLISH_PASS</code>.</p>
       </div>
     </section>
   );

@@ -23,6 +23,7 @@
 - [x] Now showing (12), local time (12), ON AIR (12) designs and logo watermark text (TV etc., 14 styles, under/beside the logo) with wording templates, colours and transitions
 - [x] Every graphic has Show now / Take off air and the same timing choices (stays up, once, repeat); graphics stay on screen between programmes; display window uses local time
 - [x] Connect HostHerb: engine/OBS push to RTMPS server, website + apps watch https://watch.hostherb.com/tv-257/index.m3u8 (applied on next station-manager sign-in)
-- [ ] Start sending to HostHerb: run the engine on an always-on server or OBS on /output (needs user's server/computer)
+- [x] Railway option in Settings → Playout engine (stock node image + start command that fetches the engine)
+- [ ] Start sending to HostHerb: deploy the engine on Railway with an engine token (needs user's Railway account + publish)
 - [ ] Phase 2: Advertisement campaigns & commercial breaks manager
 - [ ] Phase 2: Viewer management & analytics (reports, CSV/PDF export)
