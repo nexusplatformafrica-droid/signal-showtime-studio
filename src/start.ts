@@ -2,6 +2,7 @@ import { createStart, createCsrfMiddleware, createMiddleware } from "@tanstack/r
 
 import { renderErrorPage } from "./lib/error-page";
 import { attachFirebaseAuth } from "@/lib/auth-middleware";
+import { attachSupabaseAuth } from "@/integrations/supabase/auth-attacher";
 
 const errorMiddleware = createMiddleware().server(async ({ next }) => {
   try {
@@ -30,6 +31,6 @@ const csrfMiddleware = createCsrfMiddleware({
 // MOVIE MAX signs people in with Firebase: attachFirebaseAuth intentionally replaces the
 // generated Supabase attacher and sends the Firebase ID token that requireFirebaseAuth checks.
 export const startInstance = createStart(() => ({
-  functionMiddleware: [attachFirebaseAuth],
+  functionMiddleware: [attachSupabaseAuth, attachFirebaseAuth],
   requestMiddleware: [errorMiddleware, csrfMiddleware],
 }));
