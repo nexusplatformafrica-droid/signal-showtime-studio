@@ -24,7 +24,7 @@ export const getStorageStatus = createServerFn({ method: "GET" })
   .handler(async () => {
     const { getR2 } = await import("@/lib/r2.server");
     const r2 = getR2();
-    return { configured: !!r2, bucket: r2?.bucket ?? null };
+    return { configured: !!r2, bucket: r2?.bucket ?? null, mode: r2?.mode ?? null, service: r2?.mode === "worker" ? r2.workerUrl : null };
   });
 
 export const testStorage = createServerFn({ method: "POST" })
@@ -32,12 +32,14 @@ export const testStorage = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     await assertRoles(context, ["super_admin", "station_manager"]);
     const { getR2, testBucket } = await import("@/lib/r2.server");
-    if (!getR2()) return { ok: false, message: "R2 credentials are not set." };
+    const r2 = getR2();
+    if (!r2) return { ok: false, message: "Storage is not connected." };
     try {
       const r = await testBucket();
+      if (r2.mode === "worker") return { ok: r.ok, message: r.ok ? "Upload service is online and accepted the upload token." : `Upload service is not ready (HTTP ${r.status}). Check its settings on Cloudflare.` };
       return { ok: r.ok, message: r.ok ? "Bucket reachable with the configured credentials." : `Bucket responded with HTTP ${r.status}. Check the bucket name and key permissions.` };
-    } catch {
-      return { ok: false, message: "Could not reach Cloudflare R2." };
+    } catch (e) {
+      return { ok: false, message: e instanceof Error ? e.message : "Could not reach Cloudflare R2." };
     }
   });
 
@@ -53,8 +55,7 @@ export const startMediaUpload = createServerFn({ method: "POST" })
       const parts = await r2.listParts(row.storage_key, row.upload_id);
       if (parts) return { uploadId: row.upload_id, key: row.storage_key, parts };
     }
-    const key = `channels/${row.channel_id}/media/${row.id}/${Date.now()}-${sanitize(data.filename)}`;
-    const uploadId = await r2.createMultipart(key, data.contentType || "application/octet-stream");
+    const { key, uploadId } = await r2.createMultipart(`channels/${row.channel_id}/media/${row.id}`, sanitize(data.filename), data.contentType || "application/octet-stream");
     const { getR2 } = r2;
     await context.supabase
       .from("media_assets")

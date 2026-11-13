@@ -229,6 +229,8 @@ function StorageTab() {
       <section className="panel">
         <div className="panel-header">Cloudflare R2<StatusChip tone={status.data?.configured ? "preview" : "warn"}>{status.data?.configured ? "Connected" : "Not connected"}</StatusChip></div>
         <dl className="grid grid-cols-[130px_1fr] gap-y-1 p-3 text-xs">
+          <dt className="text-muted-foreground">Connected through</dt><dd>{status.data?.mode === "worker" ? "Your upload service on Cloudflare Workers" : status.data?.mode === "direct" ? "R2 access keys" : "—"}</dd>
+          {status.data?.service && (<><dt className="text-muted-foreground">Upload service</dt><dd className="truncate">{status.data.service}</dd></>)}
           <dt className="text-muted-foreground">Bucket</dt><dd>{status.data?.bucket ?? "—"}</dd>
           <dt className="text-muted-foreground">Media stored</dt><dd className="timecode">{formatBytes(usage.data?.bytes)} · {usage.data?.count ?? 0} assets</dd>
           <dt className="text-muted-foreground">Upload limit</dt><dd>Up to 160 GB per file (16 MB resumable parts)</dd>
@@ -239,7 +241,7 @@ function StorageTab() {
         </div>
         {!status.data?.configured && (
           <div className="border-t border-border p-3 text-xs text-muted-foreground">
-            Storage credentials are kept as private project secrets and never reach the browser. Four values are required: <code>R2_ACCOUNT_ID</code>, <code>R2_ACCESS_KEY_ID</code>, <code>R2_SECRET_ACCESS_KEY</code>, <code>R2_BUCKET</code>. Ask the assistant to add them.
+            Storage details are kept as private project secrets and never reach the browser. Connect either your upload service (<code>UPLOAD_WORKER_URL</code> + <code>UPLOAD_TOKEN</code>) or R2 access keys (<code>R2_ACCOUNT_ID</code>, <code>R2_ACCESS_KEY_ID</code>, <code>R2_SECRET_ACCESS_KEY</code>, <code>R2_BUCKET</code>). Ask the assistant to add them.
           </div>
         )}
       </section>

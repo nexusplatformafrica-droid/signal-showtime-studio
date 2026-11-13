@@ -115,7 +115,7 @@ function MediaLibrary() {
       }>
         {storage.data && !storage.data.configured && (
           <div className="flex items-center gap-2 border-t border-warn/30 bg-warn/10 px-4 py-1.5 text-xs text-warn">
-            <AlertTriangle className="size-3.5" /> Media storage (Cloudflare R2) is not connected. File uploads are disabled until the R2 credentials are added (Settings → Storage). You can still add files by pasting their public R2 link.
+            <AlertTriangle className="size-3.5" /> Media storage (Cloudflare R2) is not connected. File uploads are disabled until storage is connected (Settings → Storage). You can still add files by pasting their public R2 link.
           </div>
         )}
         {selected.size > 0 && (
@@ -388,7 +388,7 @@ function UploadDialog({ open, onOpenChange, folderId, onDone, storageReady }: { 
             <input type="file" multiple accept="video/*,.mkv,.mxf,.ts" hidden onChange={(e) => e.target.files && addFiles(e.target.files)} />
           </label>
         ) : (
-          <div className="rounded-sm border border-dashed border-border bg-inset p-3 text-center text-xs text-muted-foreground">File uploads need the R2 credentials (Settings → Storage). Pasting a public link works without them.</div>
+          <div className="rounded-sm border border-dashed border-border bg-inset p-3 text-center text-xs text-muted-foreground">File uploads need storage to be connected (Settings → Storage). Pasting a public link works without them.</div>
         )}
         <div className="max-h-72 space-y-1 overflow-y-auto">
           {items.map((i) => (
