@@ -2,9 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
-import "@lovable.dev/cloud-auth-js/styles.css";
+import { authErrorMessage, getFirebase, watchAuth } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Wordmark } from "@/components/brand/Wordmark";
 
@@ -53,59 +51,39 @@ function AuthPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const dest = safePath(redirect);
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user) navigate({ to: dest, replace: true });
-    });
-    const { data } = supabase.auth.onAuthStateChange((e, session) => {
-      if (e === "SIGNED_IN" && session) navigate({ to: dest, replace: true });
-    });
-    return () => data.subscription.unsubscribe();
-  }, [dest, navigate]);
+  useEffect(() => watchAuth((u) => { if (u) navigate({ to: dest, replace: true }); }), [dest, navigate]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setNotice(null);
     try {
+      const { auth, authMod } = await getFirebase();
       if (mode === "signin") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        await authMod.signInWithEmailAndPassword(auth, email.trim(), password);
       } else if (mode === "signup") {
-        const { data, error } = await supabase.auth.signUp({
-          email, password,
-          options: { emailRedirectTo: window.location.origin + dest, data: { display_name: name } },
-        });
-        if (error) throw error;
-        if (!data.session) setNotice("Check your email to confirm your account, then sign in.");
+        const cred = await authMod.createUserWithEmailAndPassword(auth, email.trim(), password);
+        if (name.trim()) await authMod.updateProfile(cred.user, { displayName: name.trim().slice(0, 80) });
+        await authMod.sendEmailVerification(cred.user).catch(() => undefined);
       } else {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/reset-password` });
-        if (error) throw error;
+        await authMod.sendPasswordResetEmail(auth, email.trim());
         setNotice("If an account exists for that email, a reset link is on its way.");
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Sign in failed");
+      toast.error(authErrorMessage(err));
     } finally {
       setBusy(false);
     }
   }
 
-  async function oauth(provider: "google" | "lovable") {
-    sessionStorage.setItem("mm-post-auth", dest);
-    const res = await lovable.auth.signInWithOAuth(provider, { redirect_uri: window.location.origin + "/auth" });
-    if (res.error) toast.error(res.error.message ?? "Sign in failed");
+  async function google() {
+    try {
+      const { auth, authMod } = await getFirebase();
+      await authMod.signInWithPopup(auth, new authMod.GoogleAuthProvider());
+    } catch (err) {
+      toast.error(authErrorMessage(err));
+    }
   }
-
-  useEffect(() => {
-    const stored = sessionStorage.getItem("mm-post-auth");
-    if (!stored) return;
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user) {
-        sessionStorage.removeItem("mm-post-auth");
-        navigate({ to: safePath(stored), replace: true });
-      }
-    });
-  }, [navigate]);
 
   return (
     <div className="theme-public public-bg relative isolate grid min-h-screen place-items-center px-4 text-foreground">
@@ -124,7 +102,7 @@ function AuthPage() {
             {mode === "signin" ? "Staff sign in" : mode === "signup" ? "Create staff account" : "Reset password"}
           </h1>
           <p className="mt-1 text-xs text-muted-foreground">
-            {mode === "signup" ? "New accounts need a role from a Super Admin before they can operate the station." : "Access is restricted to authorised station personnel."}
+            {mode === "signup" ? "New accounts need a role from the Super Admin before they can operate the station." : "Access is restricted to authorised station personnel."}
           </p>
           {notice && <div className="mt-3 rounded-2xl border border-emerald/30 bg-emerald/10 px-3 py-2 text-xs text-emerald">{notice}</div>}
           <form onSubmit={submit} className="mt-4 space-y-3">
@@ -142,10 +120,9 @@ function AuthPage() {
           {mode !== "forgot" && (
             <div className="mt-4 space-y-2">
               <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground"><span className="h-px flex-1 bg-border" />or<span className="h-px flex-1 bg-border" /></div>
-              <button type="button" onClick={() => oauth("google")} className="google-btn">
+              <button type="button" onClick={google} className="google-btn">
                 <GoogleG /> Continue with Google
               </button>
-              <button type="button" className="lovable-auth-button w-full" onClick={() => oauth("lovable")}>Continue with Lovable</button>
             </div>
           )}
           <div className="mt-4 flex justify-between text-xs text-muted-foreground">

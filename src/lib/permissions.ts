@@ -1,4 +1,4 @@
-import type { Database } from "@/integrations/supabase/types";
+import type { Database } from "@/lib/db-types";
 
 export type AppRole = Database["public"]["Enums"]["app_role"];
 
@@ -10,12 +10,16 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   graphics_designer: "Graphics Designer",
   advertising_manager: "Advertising Manager",
   analyst: "Analyst",
+  playout_engine: "Playout engine",
 };
 
 export const ALL_ROLES = Object.keys(ROLE_LABELS) as AppRole[];
 
+/** Roles the Super Admin can give to people. Super Admin itself is fixed to one email and never given out. */
+export const ASSIGNABLE_ROLES = ALL_ROLES.filter((r) => r !== "super_admin" && r !== "playout_engine");
+
 /**
- * UI capability map. The database policies enforce the same rules server-side;
+ * UI capability map. firestore.rules enforce the same rules in the database;
  * this map only decides which controls are shown as enabled.
  */
 export const CAPABILITIES = {

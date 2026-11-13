@@ -1,6 +1,11 @@
 import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
+import { toast } from "sonner";
+import { db } from "@/lib/db";
+import { getFirebase, signOutUser } from "@/lib/firebase";
+import { OWNER_EMAIL } from "@/lib/firebase-config";
+import { seedStation } from "@/lib/station-seed";
 import { StationProvider } from "@/components/admin/station-context";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { useChannelQuery } from "@/hooks/use-station";
@@ -23,46 +28,105 @@ export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminLayout,
 });
 
+function Gate({ title, children, onSignOut }: { title: string; children: React.ReactNode; onSignOut: () => void }) {
+  return (
+    <div className="grid min-h-screen place-items-center px-4">
+      <div className="panel max-w-md p-6 text-center">
+        <Wordmark className="text-xl" />
+        <h1 className="mt-4 font-display text-lg font-bold uppercase">{title}</h1>
+        <div className="mt-2 space-y-3 text-sm text-muted-foreground">{children}</div>
+        <Button variant="panel" size="sm" className="mt-5" onClick={onSignOut}>Sign out</Button>
+      </div>
+    </div>
+  );
+}
+
 function AdminLayout() {
   const { user } = Route.useRouteContext();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const [sent, setSent] = useState(false);
+  const ownerEmail = user.email?.toLowerCase() === OWNER_EMAIL;
+
   const roles = useQuery({
     queryKey: ["my-roles", user.id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
+      // Keep the person's profile (email + name) current so the Super Admin can find them in Users & roles.
+      await db.from("profiles").upsert({ id: user.id, email: user.email, display_name: user.displayName }).then(() => undefined);
+      const { data, error } = await db.from("user_roles").select("roles").eq("id", user.id).maybeSingle();
       if (error) throw error;
-      return (data ?? []).map((r) => r.role as AppRole);
+      const list = [...((data?.roles ?? []) as AppRole[])];
+      if (user.isOwner) list.unshift("super_admin");
+      return list;
     },
   });
   const channel = useChannelQuery();
+  const seed = useQuery({
+    queryKey: ["seed-station"],
+    enabled: user.isOwner && channel.isSuccess && !channel.data,
+    queryFn: async () => {
+      await seedStation(db);
+      await qc.invalidateQueries({ queryKey: ["channel"] });
+      return true;
+    },
+  });
 
   async function signOut() {
     await qc.cancelQueries();
     qc.clear();
-    await supabase.auth.signOut();
+    await signOutUser();
     navigate({ to: "/auth", replace: true });
   }
 
-  if (roles.isLoading || channel.isLoading) {
+  async function sendVerification() {
+    const { auth, authMod } = await getFirebase();
+    if (!auth.currentUser) return;
+    try {
+      await authMod.sendEmailVerification(auth.currentUser);
+      setSent(true);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message.replace(/^Firebase: /, "") : "Could not send the email");
+    }
+  }
+
+  if (ownerEmail && !user.emailVerified) {
+    return (
+      <Gate title="Confirm your email" onSignOut={signOut}>
+        <p>
+          You are signed in as <span className="text-foreground">{user.email}</span>. Super Admin opens only after this email is confirmed, so nobody else can
+          claim it.
+        </p>
+        <p>Signing in with Google confirms it straight away. Or send yourself a link, open it, then come back and sign in again.</p>
+        <Button variant="emerald" size="sm" onClick={sendVerification} disabled={sent}>{sent ? "Link sent — check your inbox" : "Send confirmation link"}</Button>
+      </Gate>
+    );
+  }
+  if (roles.isLoading || channel.isLoading || seed.isFetching) {
     return <div className="grid min-h-screen place-items-center"><span className="label-caps">Loading control room…</span></div>;
   }
-  if (roles.error || channel.error || !channel.data) {
-    return <div className="grid min-h-screen place-items-center text-sm text-destructive">Could not load station data. Refresh to try again.</div>;
+  if (roles.error || channel.error || seed.error) {
+    const msg = (roles.error ?? channel.error ?? seed.error) as Error;
+    return (
+      <Gate title="Could not load the station" onSignOut={signOut}>
+        <p>{msg.message.includes("permission") ? "The database refused access. The Firebase security rules may not be published yet (Settings → Firebase), or your role was removed." : msg.message}</p>
+      </Gate>
+    );
   }
   if (!roles.data?.length) {
     return (
-      <div className="grid min-h-screen place-items-center px-4">
-        <div className="panel max-w-md p-6 text-center">
-          <Wordmark className="text-xl" />
-          <h1 className="mt-4 font-display text-lg font-bold uppercase">Access pending</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            You are signed in as <span className="text-foreground">{user.email}</span>, but no station role has been assigned yet.
-            Ask a Super Admin to grant you a role in Settings → Users &amp; roles.
-          </p>
-          <Button variant="panel" size="sm" className="mt-5" onClick={signOut}>Sign out</Button>
-        </div>
-      </div>
+      <Gate title="Access pending" onSignOut={signOut}>
+        <p>
+          You are signed in as <span className="text-foreground">{user.email}</span>, but no station role has been given to you yet. Ask the Super Admin to add you in
+          Settings → Users &amp; roles.
+        </p>
+      </Gate>
+    );
+  }
+  if (!channel.data) {
+    return (
+      <Gate title="Station not set up yet" onSignOut={signOut}>
+        <p>The Super Admin ({OWNER_EMAIL}) needs to sign in once to set up the MOVIE MAX station.</p>
+      </Gate>
     );
   }
   return (

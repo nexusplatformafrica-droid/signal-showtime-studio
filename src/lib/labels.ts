@@ -1,4 +1,4 @@
-import type { Database } from "@/integrations/supabase/types";
+import type { Database } from "@/lib/db-types";
 
 export type MediaCategory = Database["public"]["Enums"]["media_category"];
 export type PlaylistKind = Database["public"]["Enums"]["playlist_kind"];
