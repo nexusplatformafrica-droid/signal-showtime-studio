@@ -1,6 +1,7 @@
 import { ImagePlus, Play, RotateCcw, Trash2 } from "lucide-react";
 import { NewsCard } from "@/components/broadcast/NewsCard";
 import { Step } from "@/components/admin/UpNextStudio";
+import { TimingStep } from "@/components/admin/TimingStep";
 import { TRANSITIONS } from "@/lib/brand-cards";
 import { NEWS_DESIGNS, NEWS_TEMPLATES, newsDesignById, newsHeadlines, newsTextFor } from "@/lib/news-cards";
 import type { OverlayConfig } from "@/lib/graphics";
@@ -26,11 +27,10 @@ export function NewsStudio({ config, timezone, onChange, onUpload, onPlay, enabl
   const text = newsTextFor(config, now, timezone);
   const headlines = newsHeadlines(config.title);
   const set = (patch: OverlayConfig, replay = false) => { onChange(patch); if (replay) setTimeout(onPlay, 50); };
-  const mode = (Number(config.duration) || 0) === 0 ? "always" : config.show_mode === "repeat" ? "repeat" : "once";
 
   return (
     <section className="panel">
-      <div className="panel-header">News · branding studio<span className="normal-case tracking-normal">changes show in the preview above · publish to put them on air</span></div>
+      <div className="panel-header">News · branding studio<span className="normal-case tracking-normal">changes show in the preview above · publish or “Show now” to put them on air</span></div>
       {!enabled && (
         <div className="flex items-center justify-between gap-2 border-b border-border bg-warn/10 px-3 py-2 text-xs">
           <span>The news lower third is switched off, so it isn't in the preview or on air.</span>
@@ -116,19 +116,7 @@ export function NewsStudio({ config, timezone, onChange, onUpload, onPlay, enabl
             <Button type="button" size="xs" variant="brand" onClick={onPlay}><Play className="size-3.5" />Play transition in preview</Button>
           </Step>
 
-          <Step n={6} title="When it shows" hint="Timing starts when you press Publish.">
-            <div className="space-y-1.5 text-sm">
-              <label className="flex items-center gap-2"><input type="radio" className="accent-program" checked={mode === "always"} onChange={() => set({ duration: 0, show_mode: "once" })} />Stays on screen until I switch it off</label>
-              <label className="flex items-center gap-2"><input type="radio" className="accent-program" checked={mode === "once"} onChange={() => set({ duration: config.duration || 20, show_mode: "once" })} />Once, right after I publish</label>
-              <label className="flex items-center gap-2"><input type="radio" className="accent-program" checked={mode === "repeat"} onChange={() => set({ duration: config.duration || 20, show_mode: "repeat" })} />Again and again, on a timer</label>
-            </div>
-            {mode !== "always" && (
-              <div className="grid grid-cols-2 gap-2">
-                <label className="block space-y-1"><span className="label-caps">On screen for (seconds)</span><input type="number" min={3} max={3600} className="field" value={config.duration ?? 20} onChange={(e) => set({ duration: Math.max(3, +e.target.value) })} /></label>
-                {mode === "repeat" && <label className="block space-y-1"><span className="label-caps">Repeat every (minutes)</span><input type="number" min={1} max={240} className="field" value={config.every ?? 10} onChange={(e) => set({ every: Math.max(1, +e.target.value) })} /></label>}
-              </div>
-            )}
-          </Step>
+          <TimingStep n={6} kind="lower_third" config={config} set={set} defaultSeconds={20} />
         </div>
       </div>
     </section>

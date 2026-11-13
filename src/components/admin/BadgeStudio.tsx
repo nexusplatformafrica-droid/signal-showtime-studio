@@ -1,5 +1,6 @@
 import { ImagePlus, Play, RotateCcw, Trash2 } from "lucide-react";
 import { Step } from "@/components/admin/UpNextStudio";
+import { TimingStep } from "@/components/admin/TimingStep";
 import { ClockCard, LogoMark, NowShowingCard, OnAirCard } from "@/components/broadcast/BadgeCards";
 import { TRANSITIONS, type CardPhase } from "@/lib/brand-cards";
 import { designIn } from "@/lib/card-kits";
@@ -50,14 +51,13 @@ export function BadgeStudio({ kind, config, timezone, programme, onChange, onUpl
     ...config, design: id, color: undefined, color2: undefined, transition_in: "none", size: copy.thumb,
     ...(kind === "logo" ? { caption: config.caption ?? BADGE_DEFAULTS.logo.caption, caption_size: Math.max(config.caption_size ?? 18, 22) } : {}),
   });
-  const timed = (Number(config.duration) || 0) > 0;
   // Unset fields count as their on-screen default, so the right wording button lights up.
   const fallback: Partial<Record<keyof OverlayConfig, string>> = { kicker: kind === "clock" ? BADGE_DEFAULTS.clock.kicker : "NOW SHOWING", text: BADGE_DEFAULTS.on_air.text, tag: "", caption: "" };
   const field = (k: keyof OverlayConfig) => ((config as Record<string, unknown>)[k] ?? fallback[k] ?? "") as string;
 
   return (
     <section className="panel">
-      <div className="panel-header">{copy.title} · branding studio<span className="normal-case tracking-normal">changes show in the preview above · publish to put them on air</span></div>
+      <div className="panel-header">{copy.title} · branding studio<span className="normal-case tracking-normal">changes show in the preview above · publish or “Show now” to put them on air</span></div>
       {!enabled && (
         <div className="flex items-center justify-between gap-2 border-b border-border bg-warn/10 px-3 py-2 text-xs">
           <span>{copy.what} is switched off, so it isn't in the preview or on air.</span>
@@ -168,24 +168,16 @@ export function BadgeStudio({ kind, config, timezone, programme, onChange, onUpl
             </div>
           </Step>
 
-          <Step n={5} title="Transition" hint={kind === "now_showing" ? "How it appears and disappears." : "How it appears when the picture starts."}>
+          <Step n={5} title="Transition" hint="How it appears and disappears.">
             <div className="grid grid-cols-2 gap-2">
               <label className="block space-y-1"><span className="label-caps">Appear</span><select className="field" value={config.transition_in ?? copy.inDefault} onChange={(e) => set({ transition_in: e.target.value }, true)}>{TRANSITIONS.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
-              {kind === "now_showing" && <label className="block space-y-1"><span className="label-caps">Disappear</span><select className="field" value={config.transition_out ?? copy.outDefault} onChange={(e) => set({ transition_out: e.target.value }, true)}>{TRANSITIONS.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label>}
+              <label className="block space-y-1"><span className="label-caps">Disappear</span><select className="field" value={config.transition_out ?? copy.outDefault} onChange={(e) => set({ transition_out: e.target.value }, true)}>{TRANSITIONS.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
             </div>
             <label className="block space-y-1"><span className="label-caps">Speed · {((config.transition_ms ?? 700) / 1000).toFixed(1)} s</span><input type="range" min={200} max={2500} step={100} value={config.transition_ms ?? 700} onChange={(e) => set({ transition_ms: +e.target.value })} onPointerUp={onPlay} className="w-full accent-program" /></label>
             <Button type="button" size="xs" variant="brand" onClick={onPlay}><Play className="size-3.5" />Play transition in preview</Button>
           </Step>
 
-          {kind === "now_showing" && (
-            <Step n={6} title="When it shows" hint="Only while a programme is playing.">
-              <div className="space-y-1.5 text-sm">
-                <label className="flex items-center gap-2"><input type="radio" className="accent-program" checked={!timed} onChange={() => set({ duration: 0 })} />The whole programme</label>
-                <label className="flex items-center gap-2"><input type="radio" className="accent-program" checked={timed} onChange={() => set({ duration: config.duration || 10 })} />When a programme starts, then every 10 minutes</label>
-              </div>
-              {timed && <label className="block space-y-1"><span className="label-caps">On screen for (seconds)</span><input type="number" min={3} max={590} className="field" value={config.duration ?? 10} onChange={(e) => set({ duration: Math.min(590, Math.max(3, +e.target.value)) })} /></label>}
-            </Step>
-          )}
+          <TimingStep n={6} kind={kind} config={config} set={set} defaultSeconds={kind === "now_showing" ? 10 : 15} />
         </div>
       </div>
     </section>

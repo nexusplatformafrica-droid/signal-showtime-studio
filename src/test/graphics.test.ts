@@ -149,3 +149,38 @@ describe("publishing graphics", () => {
     expect(takeOffPatch()).toEqual({ enabled: false, published_enabled: false });
   });
 });
+
+import { hiddenReason, timingMode } from "@/lib/graphics";
+
+describe("every graphic can stay up, show once or repeat", () => {
+  const pub = "2026-11-12T11:02:00Z";
+  it("clock and logo saved before these options stay on screen", () => {
+    expect(timingMode(ov("clock", { size: 8 }))).toBe("always");
+    expect(isOverlayVisible(ov("logo", {}, { published_at: pub }), ctx(99_999))).toBe(true);
+  });
+  it("'Stays on screen' keeps it up even with an old duration left in it", () => {
+    expect(isOverlayVisible(ov("clock", { show_mode: "always", duration: 15 }, { published_at: pub }), ctx(99_999))).toBe(true);
+  });
+  it("clock set to 'once' shows for its seconds after Show now, then says its time is over", () => {
+    const o = ov("clock", { show_mode: "once", duration: 30 }, { published_at: pub });
+    expect(isOverlayVisible(o, ctx(20))).toBe(true);
+    expect(hiddenReason(o, ctx(40))).toBe("timer_done");
+  });
+  it("logo set to repeat comes back every N minutes", () => {
+    const o = ov("logo", { show_mode: "repeat", duration: 20, every: 2 }, { published_at: pub });
+    expect(isOverlayVisible(o, ctx(10))).toBe(true);
+    expect(hiddenReason(o, ctx(60))).toBe("waiting");
+    expect(isOverlayVisible(o, ctx(125))).toBe(true);
+  });
+  it("ON AIR still needs a programme playing, whatever the timing", () => {
+    expect(hiddenReason(ov("on_air", { show_mode: "always" }), ctx(5, { live: false }))).toBe("needs_programme");
+  });
+  it("now showing can be set to 'once' from Show now instead of the programme start", () => {
+    const o = ov("now_showing", { show_mode: "once", duration: 10 }, { published_at: pub });
+    expect(isOverlayVisible(o, ctx(5))).toBe(true);
+    expect(isOverlayVisible(o, ctx(605))).toBe(false);
+  });
+  it("explains a graphic waiting for its display window", () => {
+    expect(hiddenReason(ov("clock", {}, { show_from: "2026-11-12T12:00:00Z" }), ctx(0))).toBe("before_window");
+  });
+});

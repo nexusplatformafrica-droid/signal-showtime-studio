@@ -1,4 +1,5 @@
 import { ImagePlus, Play, RotateCcw, Trash2 } from "lucide-react";
+import { TimingStep } from "@/components/admin/TimingStep";
 import { BrandCard } from "@/components/broadcast/BrandCard";
 import { BRAND_DESIGNS, TEXT_TEMPLATES, TRANSITIONS, cardTextFor, designById, type CardVars } from "@/lib/brand-cards";
 import type { OverlayConfig } from "@/lib/graphics";
@@ -118,16 +119,7 @@ export function UpNextStudio({ config, vars, onChange, onUpload, onPlay, enabled
             <Button type="button" size="xs" variant="brand" onClick={onPlay}><Play className="size-3.5" />Play transition in preview</Button>
           </Step>
 
-          <Step n={6} title="When it shows">
-            <div className="space-y-1.5 text-sm">
-              <label className="flex items-start gap-2"><input type="radio" className="mt-1 accent-program" checked={(config.show_mode ?? "cycle") === "cycle"} onChange={() => set({ show_mode: "cycle" })} /><span>After a programme starts, then every 10 minutes <span className="block text-xs text-muted-foreground">Right after the "Now showing" graphic.</span></span></label>
-              <label className="flex items-start gap-2"><input type="radio" className="mt-1 accent-program" checked={config.show_mode === "before_next"} onChange={() => set({ show_mode: "before_next" })} /><span>Before the next programme starts <span className="block text-xs text-muted-foreground">Like TV: a promo near the end of the current show.</span></span></label>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {config.show_mode === "before_next" && <label className="block space-y-1"><span className="label-caps">Start (seconds before)</span><input type="number" min={5} max={3600} className="field" value={config.lead ?? 120} onChange={(e) => set({ lead: Math.max(5, +e.target.value) })} /></label>}
-              <label className="block space-y-1"><span className="label-caps">On screen for (s, 0 = {config.show_mode === "before_next" ? "until it starts" : "stays up"})</span><input type="number" min={0} max={3600} className="field" value={config.duration ?? 10} onChange={(e) => set({ duration: Math.max(0, +e.target.value) })} /></label>
-            </div>
-          </Step>
+          <TimingStep n={6} kind="next_programme" config={config} set={set} defaultSeconds={10} />
         </div>
       </div>
     </section>

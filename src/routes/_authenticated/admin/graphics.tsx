@@ -18,11 +18,12 @@ import { BadgeStudio } from "@/components/admin/BadgeStudio";
 import type { BadgeKind } from "@/lib/badge-kits";
 import { useWebPlayout } from "@/hooks/use-web-playout";
 import { nextWebEntry, pickWebProgramme } from "@/lib/web-playout";
-import { OPERATOR_TIMED, asConfig, isOverlayVisible, publishPatch, showNowPatch, takeOffPatch, type LiveOverlay, type OverlayConfig, type OverlayKind } from "@/lib/graphics";
+import { asConfig, hiddenReason, publishPatch, showNowPatch, takeOffPatch, type HiddenReason, type LiveOverlay, type OverlayConfig, type OverlayKind } from "@/lib/graphics";
+import { TimingStep } from "@/components/admin/TimingStep";
 import type { KitKind } from "@/lib/card-kits";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { formatTime } from "@/lib/broadcast";
+import { formatDate, formatTime, toZoned, zonedToUtc } from "@/lib/broadcast";
 import { cn } from "@/lib/utils";
 import slate from "@/assets/standby-slate.jpg";
 
@@ -174,16 +175,16 @@ function GraphicsPage() {
               {["station_id", "programme_title"].includes(active.kind) && (
                 <label className="block space-y-1"><span className="label-caps">{active.kind === "ticker" ? "Ticker text" : "Text"}</span><textarea className="field" rows={active.kind === "ticker" ? 3 : 1} value={activeCfg.text ?? ""} onChange={(e) => setCfg({ text: e.target.value })} maxLength={500} /></label>
               )}
-              {["station_id", "programme_title"].includes(active.kind) && (
-                <label className="block space-y-1"><span className="label-caps">Display duration (seconds, 0 = always)</span><input type="number" min={0} max={3600} className="field" value={activeCfg.duration ?? 0} onChange={(e) => setCfg({ duration: Math.max(0, +e.target.value) })} /></label>
-              )}
-              <ScheduleWindow overlay={active} />
+              <ScheduleWindow overlay={active} timezone={channel.timezone} />
             </fieldset>
           ) : <EmptyState title="Select an overlay" />}
         </section>
       </div>
-      {active && OPERATOR_TIMED.has(active.kind as OverlayKind) && (
+      {active && (
         <div className="px-3 pb-3"><OnAirBar overlay={active} canEdit={canEdit} onShow={() => showNow(active)} onTakeOff={() => takeOff(active)} /></div>
+      )}
+      {active && !STUDIO.has(active.kind) && (
+        <fieldset disabled={!canEdit} className="px-3 pb-3"><section className="panel p-3"><TimingStep n={1} kind={active.kind as OverlayKind} config={activeCfg} set={setCfg} /></section></fieldset>
       )}
       {active && KIT.has(active.kind) && (
         <fieldset disabled={!canEdit} className="px-3 pb-3">
@@ -247,15 +248,32 @@ function GraphicsPage() {
   );
 }
 
+const REASON: Record<HiddenReason, string> = {
+  before_window: "Waiting for its display window to start",
+  after_window: "Its display window has ended — clear or change the window",
+  needs_programme: "Shows only while a programme is playing",
+  needs_next: "No next programme in the schedule",
+  timer_done: "Its time on screen is over — press Show now to show it again",
+  waiting: "Between showings — it comes back on its timer",
+};
+
 /** Operator buttons: what viewers see right now for this graphic, plus Show now / Take off air. */
 function OnAirBar({ overlay, canEdit, onShow, onTakeOff }: { overlay: Overlay; canEdit: boolean; onShow: () => void; onTakeOff: () => void }) {
-  const now = useNow(1000);
+  const tick = useNow(1000);
+  const { web, pick } = useWebPlayout(tick);
   const live: LiveOverlay = { id: overlay.id, kind: overlay.kind as OverlayKind, name: overlay.name, config: asConfig(overlay.published_config), show_from: overlay.show_from, show_until: overlay.show_until, published_at: overlay.published_at };
-  const onAir = now != null && overlay.published_enabled && overlay.published_config != null && isOverlayVisible(live, { now, live: true, title: null, nextTitle: null, programmeStartedAt: null });
+  let status: string | null = "Not on screen — press Show now to put it on air";
+  if (tick != null && overlay.published_enabled && overlay.published_config != null) {
+    // Same clock and schedule the website and the output page use.
+    const now = tick + (web?.skewMs ?? 0);
+    const next = nextWebEntry(web?.bundle, now);
+    const why = hiddenReason(live, { now, live: !!pick, title: pick?.title ?? null, nextTitle: next?.title ?? null, nextStartsAt: next ? Date.parse(next.starts_at) : null, programmeStartedAt: pick ? Date.parse(pick.entry.starts_at) : null });
+    status = why ? REASON[why] : null;
+  }
   return (
     <section className="panel flex flex-wrap items-center gap-3 px-3 py-2">
-      {onAir ? <StatusChip tone="program"><span className="size-1.5 rounded-full bg-program animate-tally" />On viewers' screens now</StatusChip> : <StatusChip tone="off">Not on screen</StatusChip>}
-      <span className="text-xs text-muted-foreground">Show now puts what you see in the preview on air immediately and starts its timer. Other graphics are not touched.</span>
+      {status == null ? <StatusChip tone="program"><span className="size-1.5 rounded-full bg-program animate-tally" />On viewers' screens now</StatusChip> : <StatusChip tone="off">Not on screen</StatusChip>}
+      <span className="text-xs text-muted-foreground">{status ?? "Show now puts what you see in the preview on air immediately and restarts its timer. Other graphics are not touched."}</span>
       <div className="ml-auto flex gap-2">
         <Button type="button" size="xs" variant="program" disabled={!canEdit} onClick={onShow}><Radio className="size-3.5" />Show now</Button>
         <Button type="button" size="xs" variant="panel" disabled={!canEdit || !overlay.published_enabled} onClick={onTakeOff}><Square className="size-3.5" />Take off air</Button>
@@ -264,24 +282,32 @@ function OnAirBar({ overlay, canEdit, onShow, onTakeOff }: { overlay: Overlay; c
   );
 }
 
-function ScheduleWindow({ overlay }: { overlay: Overlay }) {
+/** Optional on-air window, typed in the channel's local time and stored in UTC. */
+function ScheduleWindow({ overlay, timezone }: { overlay: Overlay; timezone: string }) {
   const qc = useQueryClient();
-  const toLocal = (iso: string | null) => (iso ? new Date(iso).toISOString().slice(0, 16) : "");
+  const toLocal = (iso: string | null) => { if (!iso) return ""; const z = toZoned(iso, timezone); return `${z.date}T${z.time}`; };
+  const toUtc = (v: string) => { const [d = "", t = "00:00"] = v.split("T"); return zonedToUtc(d, t, timezone).toISOString(); };
   const [from, setFrom] = useState(toLocal(overlay.show_from));
   const [until, setUntil] = useState(toLocal(overlay.show_until));
-  useEffect(() => { setFrom(toLocal(overlay.show_from)); setUntil(toLocal(overlay.show_until)); }, [overlay]);
-  async function save() {
-    const { error } = await supabase.from("graphics_overlays").update({ show_from: from ? new Date(from + "Z").toISOString() : null, show_until: until ? new Date(until + "Z").toISOString() : null }).eq("id", overlay.id);
+  useEffect(() => { setFrom(toLocal(overlay.show_from)); setUntil(toLocal(overlay.show_until)); }, [overlay, timezone]);
+  async function save(clear = false) {
+    const patch = clear ? { show_from: null, show_until: null } : { show_from: from ? toUtc(from) : null, show_until: until ? toUtc(until) : null };
+    const { error } = await supabase.from("graphics_overlays").update(patch).eq("id", overlay.id);
     if (error) toast.error(error.message);
-    else toast.success("Schedule window saved");
+    else toast.success(clear ? "Window cleared — it can show any time" : "Display window saved");
     qc.invalidateQueries({ queryKey: ["overlays"] });
   }
+  const set = overlay.show_from || overlay.show_until;
   return (
     <div className="space-y-1.5 rounded-sm border border-border bg-inset p-2">
-      <span className="label-caps">Scheduled display window (UTC, optional)</span>
+      <span className="label-caps">Only show between (local time, optional)</span>
+      {set && <p className="text-[0.65rem] text-muted-foreground">Now limited to {overlay.show_from ? `${formatDate(overlay.show_from, timezone)} ${formatTime(overlay.show_from, timezone)}` : "any time"} → {overlay.show_until ? `${formatDate(overlay.show_until, timezone)} ${formatTime(overlay.show_until, timezone)}` : "no end"}</p>}
       <input type="datetime-local" className="field" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="Show from" />
       <input type="datetime-local" className="field" value={until} onChange={(e) => setUntil(e.target.value)} aria-label="Show until" />
-      <Button type="button" size="xs" variant="panel" onClick={save}>Save window</Button>
+      <div className="flex gap-2">
+        <Button type="button" size="xs" variant="panel" onClick={() => save()}>Save window</Button>
+        {set && <Button type="button" size="xs" variant="panel" onClick={() => save(true)}>Clear window</Button>}
+      </div>
     </div>
   );
 }

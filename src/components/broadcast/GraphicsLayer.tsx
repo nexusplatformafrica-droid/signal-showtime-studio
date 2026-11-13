@@ -67,13 +67,13 @@ export function GraphicsLayer({ overlays, ctx, timezone, className, replay }: { 
         const rp = replay?.id === o.id ? replay : null;
         const key = `${o.id}:${rp?.key ?? ""}`;
         const style = { opacity: c.opacity ?? 1 };
+        const phase = rp ? rp.phase : cardPhase(overlayRemainingMs(o, ctx), Number(c.transition_ms) || 700);
         if (o.kind === "now_showing" || o.kind === "programme_title") {
-          const phase = rp ? rp.phase : cardPhase(overlayRemainingMs(o, ctx), Number(c.transition_ms) || 700);
           return <div key={key} style={style}><NowShowingCard config={c} text={nowShowingText(c, ctx.title, ctx.now, timezone)} phase={phase} /></div>;
         }
-        if (o.kind === "clock") return <div key={key} style={style}><ClockCard config={c} parts={clockParts(ctx.now, timezone, { h12: c.h12, seconds: c.seconds })} label={c.kicker ?? BADGE_DEFAULTS.clock.kicker} phase={rp?.phase} /></div>;
-        if (o.kind === "on_air" || o.kind === "live_indicator") return <div key={key} style={style}><OnAirCard config={o.kind === "live_indicator" && !c.text ? { ...c, text: "LIVE" } : c} phase={rp?.phase} /></div>;
-        if (o.kind === "logo") return <div key={key} style={style}><LogoMark config={c} phase={rp?.phase} /></div>;
+        if (o.kind === "clock") return <div key={key} style={style}><ClockCard config={c} parts={clockParts(ctx.now, timezone, { h12: c.h12, seconds: c.seconds })} label={c.kicker ?? BADGE_DEFAULTS.clock.kicker} phase={phase} /></div>;
+        if (o.kind === "on_air" || o.kind === "live_indicator") return <div key={key} style={style}><OnAirCard config={o.kind === "live_indicator" && !c.text ? { ...c, text: "LIVE" } : c} phase={phase} /></div>;
+        if (o.kind === "logo") return <div key={key} style={style}><LogoMark config={c} phase={phase} /></div>;
         return (
           <div key={o.id} style={{ ...style, maxWidth: `${Math.max(c.size ?? 30, 30)}cqw` }}>
             {(o.kind === "station_id" || o.kind === "countdown") && <span className="inline-block bg-inset/90 px-[0.6em] py-[0.3em] font-semibold" style={fs}>{c.text || o.name}</span>}

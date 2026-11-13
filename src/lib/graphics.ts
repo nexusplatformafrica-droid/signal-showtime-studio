@@ -27,8 +27,8 @@ export interface OverlayConfig {
   transition_in?: string | undefined;
   transition_out?: string | undefined;
   transition_ms?: number | undefined;
-  /** "cycle" = after "now showing", every 10 minutes; "before_next" = `lead` seconds before the next programme starts. */
-  show_mode?: "cycle" | "before_next" | "once" | "repeat" | undefined;
+  /** See `timingMode`: "always", "once"/"repeat" (from Show now), "cycle" (each programme start, every 10 min), "before_next". */
+  show_mode?: "always" | "cycle" | "before_next" | "once" | "repeat" | undefined;
   lead?: number | undefined;
   /** News lower third: logo-box text, rotate headlines every N s, scroll the description line, repeat every N minutes. */
   badge?: string | undefined;
@@ -82,52 +82,84 @@ export function asConfig(v: unknown): OverlayConfig {
   return v && typeof v === "object" && !Array.isArray(v) ? (v as OverlayConfig) : {};
 }
 
-export function isOverlayVisible(o: LiveOverlay, ctx: GraphicsContext): boolean {
-  if (o.show_from && ctx.now < Date.parse(o.show_from)) return false;
-  if (o.show_until && ctx.now >= Date.parse(o.show_until)) return false;
-  const dur = Math.max(0, Number(o.config.duration) || 0);
-  const sinceStart = ctx.programmeStartedAt != null ? (ctx.now - ctx.programmeStartedAt) / 1000 : null;
-  const sincePublish = o.published_at ? (ctx.now - Date.parse(o.published_at)) / 1000 : 0;
-  const inCycle = (since: number | null, slot = 0) => {
-    if (dur === 0) return true;
-    if (since == null || since < 0) return false;
-    const t = since % GRAPHICS_CYCLE_S;
-    return t >= slot * dur && t < (slot + 1) * dur;
-  };
+/**
+ * How a graphic is timed. Every graphic can stay up, show once or repeat (timed from Show now /
+ * Publish); "cycle" follows each programme start and "before_next" the next programme.
+ */
+export type TimingMode = "always" | "once" | "repeat" | "cycle" | "before_next";
 
+const PROGRAMME_TIMED = new Set<OverlayKind>(["now_showing", "programme_title", "next_programme"]);
+
+export function timingMode(o: { kind: OverlayKind; config: OverlayConfig }): TimingMode {
+  const c = o.config;
+  const dur = Math.max(0, Number(c.duration) || 0);
+  if (c.show_mode === "before_next" && o.kind === "next_programme") return "before_next";
+  if (c.show_mode === "always" || dur === 0) return "always";
+  if (c.show_mode === "once" || c.show_mode === "repeat") return c.show_mode;
+  if (c.show_mode === "cycle") return "cycle";
+  // Saved before every graphic had these options.
+  if (o.kind === "ad_banner") return "repeat";
+  if (PROGRAMME_TIMED.has(o.kind) || o.kind === "station_id") return "cycle";
+  return "once";
+}
+
+/** Why a graphic is not on viewers' screens right now (null = it is showing). */
+export type HiddenReason = "before_window" | "after_window" | "needs_programme" | "needs_next" | "timer_done" | "waiting";
+
+export function hiddenReason(o: LiveOverlay, ctx: GraphicsContext): HiddenReason | null {
+  if (o.show_from && ctx.now < Date.parse(o.show_from)) return "before_window";
+  if (o.show_until && ctx.now >= Date.parse(o.show_until)) return "after_window";
+  const mode = timingMode(o);
   switch (o.kind) {
     case "on_air":
     case "live_indicator":
-      return ctx.live;
+      if (!ctx.live) return "needs_programme";
+      break;
     case "now_showing":
     case "programme_title":
-      return ctx.live && !!ctx.title && inCycle(sinceStart);
+      if (!ctx.live || !ctx.title) return "needs_programme";
+      break;
     case "next_programme":
-      if (!ctx.nextTitle && !o.config.title) return false;
-      if (o.config.show_mode === "before_next") return beforeNextRemaining(o, ctx) != null;
-      // Shown right after "now showing" so they never overlap.
-      return ctx.live && inCycle(sinceStart, 1);
-    case "lower_third":
-    case "breaking_news":
-    case "ticker":
-    case "ad_banner":
-      if (dur === 0) return true;
-      if (repeats(o)) return sincePublish >= 0 && sincePublish % repeatPeriod(o) < dur;
-      // Once, for `duration` seconds after it is published (or put on air).
-      return sincePublish >= 0 && sincePublish < dur;
-    case "station_id":
-      return inCycle(sincePublish);
-    default:
-      return true;
+      if (!ctx.nextTitle && !o.config.title) return "needs_next";
+      if (mode === "cycle" && !ctx.live) return "needs_programme";
+      break;
+  }
+  if (timeLeftMs(o, ctx) != null) return null;
+  return mode === "once" ? "timer_done" : mode === "cycle" && ctx.programmeStartedAt == null ? "needs_programme" : "waiting";
+}
+
+export function isOverlayVisible(o: LiveOverlay, ctx: GraphicsContext): boolean {
+  return hiddenReason(o, ctx) === null;
+}
+
+/** Milliseconds left in the current on-screen window (Infinity = stays up), or null when outside it. */
+function timeLeftMs(o: LiveOverlay, ctx: GraphicsContext): number | null {
+  const dur = Math.max(0, Number(o.config.duration) || 0);
+  const sincePublish = o.published_at ? (ctx.now - Date.parse(o.published_at)) / 1000 : 0;
+  switch (timingMode(o)) {
+    case "always":
+      return Infinity;
+    case "before_next":
+      return beforeNextRemaining(o, ctx);
+    case "once":
+      return sincePublish >= 0 && sincePublish < dur ? (dur - sincePublish) * 1000 : null;
+    case "repeat": {
+      if (sincePublish < 0) return null;
+      const t = sincePublish % repeatPeriod(o);
+      return t < dur ? (dur - t) * 1000 : null;
+    }
+    case "cycle": {
+      const since = o.kind === "station_id" ? sincePublish : ctx.programmeStartedAt != null ? (ctx.now - ctx.programmeStartedAt) / 1000 : null;
+      if (since == null || since < 0) return null;
+      // "Up next" sits right after "now showing" so they never overlap.
+      const slot = o.kind === "next_programme" ? 1 : 0;
+      const t = since % GRAPHICS_CYCLE_S;
+      return t >= slot * dur && t < (slot + 1) * dur ? ((slot + 1) * dur - t) * 1000 : null;
+    }
   }
 }
 
-/** Pop-up cards saved before timing options existed kept repeating every 10 minutes. */
-function repeats(o: LiveOverlay) {
-  return o.config.show_mode === "repeat" || (o.kind === "ad_banner" && !o.config.show_mode);
-}
-
-/** Seconds between repeats of a news lower third (at least its own duration). */
+/** Seconds between repeats (at least the graphic's own duration). */
 function repeatPeriod(o: LiveOverlay): number {
   const dur = Math.max(0, Number(o.config.duration) || 0);
   return Math.max(dur + 1, (Number(o.config.every) || 10) * 60);
@@ -145,23 +177,9 @@ function beforeNextRemaining(o: LiveOverlay, ctx: GraphicsContext): number | nul
 
 /** Milliseconds a visible timed graphic has left on screen (null = stays up), used to play its exit animation in time. */
 export function overlayRemainingMs(o: LiveOverlay, ctx: GraphicsContext): number | null {
-  const dur = Math.max(0, Number(o.config.duration) || 0);
-  if (o.kind === "next_programme" && o.config.show_mode === "before_next") return beforeNextRemaining(o, ctx);
-  if (dur === 0) return null;
-  const slot = o.kind === "next_programme" ? 1 : 0;
-  let since: number | null = null;
-  if (o.kind === "next_programme" || o.kind === "now_showing" || o.kind === "programme_title") since = ctx.programmeStartedAt != null ? (ctx.now - ctx.programmeStartedAt) / 1000 : null;
-  else if (OPERATOR_TIMED.has(o.kind)) {
-    if (!o.published_at) return null;
-    const since = (ctx.now - Date.parse(o.published_at)) / 1000;
-    const t = repeats(o) ? since % repeatPeriod(o) : since;
-    return Math.max(0, (dur - t) * 1000);
-  }
-  else if (o.kind === "station_id") since = o.published_at ? (ctx.now - Date.parse(o.published_at)) / 1000 : 0;
-  else return null;
-  if (since == null) return null;
-  const t = since % GRAPHICS_CYCLE_S;
-  return Math.max(0, ((slot + 1) * dur - t) * 1000);
+  const left = timeLeftMs(o, ctx);
+  if (left == null) return 0;
+  return Number.isFinite(left) ? Math.max(0, left) : null;
 }
 
 /** Seconds for one ticker pass at `speed` px/s across a 1920px-wide frame. */

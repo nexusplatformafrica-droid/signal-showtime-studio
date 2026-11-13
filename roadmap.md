@@ -18,6 +18,7 @@
 - [x] Rolling ticker (11), breaking news (16) and pop-up (10) designs: branding studios, on-air drawing on website + /output + preview, Show now / Take off air buttons, publish only restarts changed graphics
 - [x] Public website (home, watch, guide, sign-in) restyled to the glassy light theme (warm white, orange gradients, emerald green, soft rounded cards)
 - [x] Now showing (12), local time (12), ON AIR (12) designs and logo watermark text (TV etc., 14 styles, under/beside the logo) with wording templates, colours and transitions
+- [x] Every graphic has Show now / Take off air and the same timing choices (stays up, once, repeat); graphics stay on screen between programmes; display window uses local time
 - [ ] Send /output to Wowza with OBS on an always-on computer (needs user's computer + Wowza Live Broadcast password)
 - [ ] Optional: run the engine on a 24/7 server with the Wowza live password, then verify the Wowza link for apps/TV boxes (needs user's server + Wowza password; site must be published)
 - [ ] Phase 2: Advertisement campaigns & commercial breaks manager

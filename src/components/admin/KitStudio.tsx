@@ -1,5 +1,6 @@
 import { ImagePlus, Play, RotateCcw, Trash2 } from "lucide-react";
 import { Step } from "@/components/admin/UpNextStudio";
+import { TimingStep } from "@/components/admin/TimingStep";
 import { TickerCard } from "@/components/broadcast/TickerCard";
 import { BreakingCard } from "@/components/broadcast/BreakingCard";
 import { PopupCard } from "@/components/broadcast/PopupCard";
@@ -47,7 +48,6 @@ export function KitStudio({ kind, config, timezone, onChange, onUpload, onPlay, 
   const lines = config.title ?? config.text ?? "";
   const items = newsHeadlines(lines);
   const set = (patch: OverlayConfig, replay = false) => { onChange(patch); if (replay) setTimeout(onPlay, 50); };
-  const mode = (Number(config.duration) || 0) === 0 ? "always" : config.show_mode === "repeat" ? "repeat" : "once";
   const previewSize = kind === "ticker" ? 100 : kind === "breaking_news" ? 88 : 70;
 
   return (
@@ -149,19 +149,7 @@ export function KitStudio({ kind, config, timezone, onChange, onUpload, onPlay, 
             <Button type="button" size="xs" variant="brand" onClick={onPlay}><Play className="size-3.5" />Play transition in preview</Button>
           </Step>
 
-          <Step n={6} title="When it shows" hint="Timing starts when you press Show now (or Publish after changing it).">
-            <div className="space-y-1.5 text-sm">
-              <label className="flex items-center gap-2"><input type="radio" className="accent-program" checked={mode === "always"} onChange={() => set({ duration: 0, show_mode: "once" })} />Stays on screen until I take it off</label>
-              <label className="flex items-center gap-2"><input type="radio" className="accent-program" checked={mode === "once"} onChange={() => set({ duration: config.duration || 15, show_mode: "once" })} />Once, for a set time</label>
-              <label className="flex items-center gap-2"><input type="radio" className="accent-program" checked={mode === "repeat"} onChange={() => set({ duration: config.duration || 15, show_mode: "repeat" })} />Again and again, on a timer</label>
-            </div>
-            {mode !== "always" && (
-              <div className="grid grid-cols-2 gap-2">
-                <label className="block space-y-1"><span className="label-caps">On screen for (seconds)</span><input type="number" min={3} max={3600} className="field" value={config.duration ?? 15} onChange={(e) => set({ duration: Math.max(3, +e.target.value) })} /></label>
-                {mode === "repeat" && <label className="block space-y-1"><span className="label-caps">Repeat every (minutes)</span><input type="number" min={1} max={240} className="field" value={config.every ?? 10} onChange={(e) => set({ every: Math.max(1, +e.target.value) })} /></label>}
-              </div>
-            )}
-          </Step>
+          <TimingStep n={6} kind={kind} config={config} set={set} />
         </div>
       </div>
     </section>
