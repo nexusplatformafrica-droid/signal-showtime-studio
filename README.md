@@ -4,7 +4,7 @@ BUILD IT
 
 This project was built with [Lovable](https://lovable.dev).
 
-**Live app**: https://signal-showtime-studio.lovable.app
+**Live app**: https://signal-showtime-studio.nexusplatformafrica.workers.dev (Cloudflare; Lovable address https://signal-showtime-studio.lovable.app)
 
 ## Build with Lovable
 
