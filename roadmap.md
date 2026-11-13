@@ -22,7 +22,7 @@
 - [x] Public website (home, watch, guide, sign-in) restyled to the glassy light theme (warm white, orange gradients, emerald green, soft rounded cards)
 - [x] Now showing (12), local time (12), ON AIR (12) designs and logo watermark text (TV etc., 14 styles, under/beside the logo) with wording templates, colours and transitions
 - [x] Every graphic has Show now / Take off air and the same timing choices (stays up, once, repeat); graphics stay on screen between programmes; display window uses local time
-- [ ] Send /output to Wowza with OBS on an always-on computer (needs user's computer + Wowza Live Broadcast password)
-- [ ] Optional: run the engine on a 24/7 server with the Wowza live password, then verify the Wowza link for apps/TV boxes (needs user's server + Wowza password; site must be published)
+- [x] Connect HostHerb: engine/OBS push to RTMPS server, website + apps watch https://watch.hostherb.com/tv-257/index.m3u8 (applied on next station-manager sign-in)
+- [ ] Start sending to HostHerb: run the engine on an always-on server or OBS on /output (needs user's server/computer)
 - [ ] Phase 2: Advertisement campaigns & commercial breaks manager
 - [ ] Phase 2: Viewer management & analytics (reports, CSV/PDF export)

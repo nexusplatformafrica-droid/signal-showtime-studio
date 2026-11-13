@@ -281,3 +281,39 @@ export const regenerateStreamKey = createServerFn({ method: "POST" })
     if (error) throw new Error("Could not regenerate the stream key");
     return { ok: true };
   });
+
+// ------------------------------------------------------------------ broadcast destination
+
+/** Points the channel at the built-in station server (HostHerb RTMPS) when it still has no destination or the old Wowza one. */
+export const ensureStationDestination = createServerFn({ method: "POST" })
+  .middleware([requireFirebaseAuth])
+  .inputValidator((d) => z.object({ channelId: z.string().min(1).max(100) }).parse(d))
+  .handler(async ({ data, context }) => {
+    assertRoles(context, ["super_admin", "station_manager"]);
+    const { STATION_DESTINATION, STATION_PLAYBACK, isLegacyDestination, isLegacyPlaybackUrl } = await import("@/lib/station-destination.server");
+    const { data: dest, error } = await context.db.from("stream_destinations").select("id, rtmp_url").eq("channel_id", data.channelId).maybeSingle();
+    if (error) throw new Error(error.message);
+    let updated = false;
+    if (isLegacyDestination(dest?.rtmp_url)) {
+      const { error: e } = await context.db
+        .from("stream_destinations")
+        .upsert({ channel_id: data.channelId, ...STATION_DESTINATION, updated_at: new Date().toISOString() }, { onConflict: "channel_id" });
+      if (e) throw new Error(e.message);
+      updated = true;
+    }
+    const { data: ch } = await context.db.from("channels").select("id, hls_url, player_url, streaming_provider").eq("id", data.channelId).maybeSingle();
+    if (ch && (!ch.hls_url || isLegacyPlaybackUrl(ch.hls_url) || ch.streaming_provider === "Wowza Streaming Engine")) {
+      const newLink = !ch.hls_url || isLegacyPlaybackUrl(ch.hls_url);
+      const { error: e } = await context.db
+        .from("channels")
+        .update({
+          streaming_provider: STATION_DESTINATION.provider,
+          ...(newLink ? { hls_url: STATION_PLAYBACK.hls_url } : {}),
+          ...(newLink && !ch.player_url ? { player_url: STATION_PLAYBACK.player_url } : {}),
+        })
+        .eq("id", data.channelId);
+      if (e) throw new Error(e.message);
+      updated = true;
+    }
+    return { updated };
+  });

@@ -21,7 +21,7 @@ const OVERLAYS: { kind: string; name: string; enabled: boolean; config: Record<s
   },
 ];
 
-/** First-time setup of an empty Firebase project (run by the Super Admin): channel, Wowza destination, default graphics. */
+/** First-time setup of an empty Firebase project (run by the Super Admin): channel and default graphics (the broadcast server is added server-side by ensureStationDestination). */
 export async function seedStation(db: Db) {
   const { data: existing } = await db.from("channels").select("id").eq("slug", "movie-max").maybeSingle();
   const channelId = existing?.id ?? MOVIE_MAX_CHANNEL_ID;
@@ -31,20 +31,11 @@ export async function seedStation(db: Db) {
       slug: "movie-max",
       name: "MOVIE MAX",
       description: "MOVIE MAX — premium movies, series and entertainment, broadcasting 24 hours a day.",
-      hls_url: "https://5caf24a595d94.streamlock.net:1937/sykapjxrcp/sykapjxrcp/playlist.m3u8",
-      streaming_provider: "Wowza Streaming Engine",
+      hls_url: "https://watch.hostherb.com/tv-257/index.m3u8",
+      player_url: "https://watch.hostherb.com/player/tv-257/",
+      streaming_provider: "HostHerb",
     });
     if (error) throw new Error(error.message);
-  }
-  const { data: dest } = await db.from("stream_destinations").select("id").eq("channel_id", channelId).maybeSingle();
-  if (!dest) {
-    await db.from("stream_destinations").insert({
-      channel_id: channelId,
-      provider: "Wowza Streaming Engine",
-      rtmp_url: "rtmp://www.wowzacontrol.com:1935/sykapjxrcp",
-      stream_name: "sykapjxrcp",
-      username: "sykapjxrcp",
-    });
   }
   const { data: overlays } = await db.from("graphics_overlays").select("id").eq("channel_id", channelId).limit(1);
   if (!overlays?.length) {

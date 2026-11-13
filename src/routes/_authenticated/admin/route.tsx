@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { getFirebase, signOutUser } from "@/lib/firebase";
 import { OWNER_EMAIL } from "@/lib/firebase-config";
 import { seedStation } from "@/lib/station-seed";
+import { ensureStationDestination } from "@/lib/station.functions";
 import { StationProvider } from "@/components/admin/station-context";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { useChannelQuery } from "@/hooks/use-station";
@@ -68,6 +69,23 @@ function AdminLayout() {
       await seedStation(db);
       await qc.invalidateQueries({ queryKey: ["channel"] });
       return true;
+    },
+  });
+
+  // Point the channel at the built-in broadcast server (runs quietly; the stream key stays on the server).
+  const canManageStation = !!roles.data?.some((r) => r === "super_admin" || r === "station_manager");
+  useQuery({
+    queryKey: ["ensure-destination", channel.data?.id],
+    enabled: canManageStation && !!channel.data?.id,
+    staleTime: Infinity,
+    retry: false,
+    queryFn: async () => {
+      const r = await ensureStationDestination({ data: { channelId: channel.data!.id } });
+      if (r.updated) {
+        await qc.invalidateQueries({ queryKey: ["stream-destination"] });
+        await qc.invalidateQueries({ queryKey: ["channel"] });
+      }
+      return r;
     },
   });
 
