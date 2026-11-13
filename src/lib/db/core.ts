@@ -16,7 +16,7 @@ export type Update<T extends TableName> = PublicTables[T]["Update"];
 export type Doc = Record<string, unknown> & { id: string };
 export interface DbError {
   message: string;
-  code?: string;
+  code?: string | undefined;
 }
 
 export interface Backend {
@@ -37,7 +37,8 @@ type MaybeRes<R> = { data: R | null; error: null; count?: number | null } | { da
 
 type Filter =
   | { op: "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "ilike" | "is" | "notis"; field: string; value: unknown }
-  | { op: "in"; field: string; value: unknown[] };
+  | { op: "in"; field: string; value: unknown[] }
+  | { op: "fn"; field: string; value: (row: Doc) => boolean };
 
 const uuid = () => crypto.randomUUID();
 const nowIso = () => new Date().toISOString();
@@ -67,7 +68,7 @@ export function normalize(table: string, doc: Doc): Doc {
 export function prepareInsert(table: string, row: Record<string, unknown>): { id: string; data: Record<string, unknown> } {
   const s = SCHEMA[table];
   const key = DOC_KEY[table];
-  const id = String((key ? row[key] : undefined) ?? row.id ?? uuid());
+  const id = String((key ? row[key] : undefined) ?? row["id"] ?? uuid());
   const data: Record<string, unknown> = {};
   if (s) {
     for (const c of s.columns) {
@@ -116,6 +117,8 @@ function matches(row: Doc, f: Filter): boolean {
       return f.value === null ? v != null : v !== f.value;
     case "ilike":
       return typeof v === "string" && likeToRegex(String(f.value)).test(v);
+    case "fn":
+      return f.value(row);
   }
 }
 
@@ -189,6 +192,11 @@ export class Query<R, I, U, Out = ListRes<R>> implements PromiseLike<Out> {
   }
   in(field: string, values: readonly unknown[]) {
     this.filters.push({ op: "in", field, value: [...values] });
+    return this;
+  }
+  /** Keep only rows for which `test` returns true (applied after loading, like the other range filters). */
+  where(test: (row: R) => boolean) {
+    this.filters.push({ op: "fn", field: "", value: test as unknown as (row: Doc) => boolean });
     return this;
   }
   order(field: string, opts?: { ascending?: boolean; nullsFirst?: boolean }) {
@@ -286,13 +294,13 @@ export class Query<R, I, U, Out = ListRes<R>> implements PromiseLike<Out> {
       for (const row of this.payload) {
         let existing: Doc | undefined;
         if (key && row[key] != null) existing = (await this.backend.getMany(t, [String(row[key])]))[0];
-        else if (row.id) existing = (await this.backend.getMany(t, [String(row.id)]))[0];
+        else if (row["id"]) existing = (await this.backend.getMany(t, [String(row["id"])]))[0];
         else if (this.onConflict && row[this.onConflict] != null)
           existing = (await this.backend.list(t, [[this.onConflict, row[this.onConflict]]], null))[0];
         if (existing) {
           const patch: Record<string, unknown> = {};
           for (const [k, v] of Object.entries(row)) if (k !== "id" && v !== undefined) patch[k] = v;
-          if (s?.columns.includes("updated_at") && patch.updated_at === undefined) patch.updated_at = nowIso();
+          if (s?.columns.includes("updated_at") && patch["updated_at"] === undefined) patch["updated_at"] = nowIso();
           await this.backend.update(t, existing.id, patch);
           out.push(normalize(t, { ...existing, ...patch, id: existing.id }));
         } else {
@@ -308,7 +316,7 @@ export class Query<R, I, U, Out = ListRes<R>> implements PromiseLike<Out> {
     if (this.op === "update") {
       const patch: Record<string, unknown> = {};
       for (const [k, v] of Object.entries(this.patch)) if (k !== "id" && v !== undefined) patch[k] = v;
-      if (s?.columns.includes("updated_at") && patch.updated_at === undefined) patch.updated_at = nowIso();
+      if (s?.columns.includes("updated_at") && patch["updated_at"] === undefined) patch["updated_at"] = nowIso();
       const out: Doc[] = [];
       for (const r of targets) {
         await this.backend.update(t, r.id, patch);

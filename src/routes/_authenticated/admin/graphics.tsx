@@ -3,8 +3,9 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Radio, Square } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import type { Json, Tables, TablesUpdate } from "@/integrations/supabase/types";
+import { db } from "@/lib/db";
+import { uploadPicture } from "@/lib/upload";
+import type { Json, Tables, TablesUpdate } from "@/lib/db-types";
 import { useStation } from "@/components/admin/station-context";
 import { useNow } from "@/hooks/use-station";
 import { PageHeader, EmptyState } from "@/components/admin/PageHeader";
@@ -52,7 +53,7 @@ function GraphicsPage() {
 
   const overlays = useQuery({
     queryKey: ["overlays", channel.id],
-    queryFn: async () => (await supabase.from("graphics_overlays").select("*").eq("channel_id", channel.id).order("created_at")).data ?? [],
+    queryFn: async () => (await db.from("graphics_overlays").select("*").eq("channel_id", channel.id).order("created_at")).data ?? [],
   });
   useEffect(() => {
     if (!overlays.data) return;
@@ -75,7 +76,7 @@ function GraphicsPage() {
   async function save(publish: boolean) {
     const ts = new Date().toISOString();
     const results = await Promise.all(list.map((o) =>
-      supabase.from("graphics_overlays").update(
+      db.from("graphics_overlays").update(
         publish
           ? (publishPatch(o, draft[o.id] ?? {}, enabled[o.id] ?? o.enabled, ts) as unknown as OverlayUpdate)
           : { config: (draft[o.id] ?? {}) as Json, enabled: enabled[o.id] ?? o.enabled },
@@ -91,14 +92,14 @@ function GraphicsPage() {
   /** Put one graphic on air right now (restarts its timer) without touching the others. */
   async function showNow(o: Overlay) {
     const ts = new Date().toISOString();
-    const { error } = await supabase.from("graphics_overlays").update(showNowPatch(draft[o.id] ?? {}, ts) as unknown as OverlayUpdate).eq("id", o.id);
+    const { error } = await db.from("graphics_overlays").update(showNowPatch(draft[o.id] ?? {}, ts) as unknown as OverlayUpdate).eq("id", o.id);
     if (error) { toast.error(error.message); return; }
     setEnabled((e) => ({ ...e, [o.id]: true }));
     toast.success(`${o.name} is on air now — viewers see it within 15 seconds`);
     qc.invalidateQueries({ queryKey: ["overlays", channel.id] });
   }
   async function takeOff(o: Overlay) {
-    const { error } = await supabase.from("graphics_overlays").update(takeOffPatch()).eq("id", o.id);
+    const { error } = await db.from("graphics_overlays").update(takeOffPatch()).eq("id", o.id);
     if (error) { toast.error(error.message); return; }
     setEnabled((e) => ({ ...e, [o.id]: false }));
     toast.success(`${o.name} taken off air`);
@@ -124,14 +125,14 @@ function GraphicsPage() {
       toast.error(`Use a PNG, JPG or WebP under ${max / 1_000_000} MB`);
       return;
     }
-    const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
-    const path = `${field === "logo_url" ? "logos" : "brand"}/${crypto.randomUUID()}.${ext}`;
-    const { error } = await supabase.storage.from("media-thumbnails").upload(path, file, { contentType: file.type });
-    if (error) {
-      toast.error(error.message);
+    let url: string;
+    try {
+      url = await uploadPicture(file, field === "logo_url" ? "logos" : "brand");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed");
       return;
     }
-    setCfg({ [field]: `/api/public/thumbnails/${path}` });
+    setCfg({ [field]: url });
     toast.success(`${field === "logo_url" ? "Logo" : "Picture"} uploaded — save or publish to apply`);
   }
 
@@ -292,7 +293,7 @@ function ScheduleWindow({ overlay, timezone }: { overlay: Overlay; timezone: str
   useEffect(() => { setFrom(toLocal(overlay.show_from)); setUntil(toLocal(overlay.show_until)); }, [overlay, timezone]);
   async function save(clear = false) {
     const patch = clear ? { show_from: null, show_until: null } : { show_from: from ? toUtc(from) : null, show_until: until ? toUtc(until) : null };
-    const { error } = await supabase.from("graphics_overlays").update(patch).eq("id", overlay.id);
+    const { error } = await db.from("graphics_overlays").update(patch).eq("id", overlay.id);
     if (error) toast.error(error.message);
     else toast.success(clear ? "Window cleared — it can show any time" : "Display window saved");
     qc.invalidateQueries({ queryKey: ["overlays"] });

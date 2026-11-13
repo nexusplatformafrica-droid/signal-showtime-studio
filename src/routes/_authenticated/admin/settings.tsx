@@ -5,24 +5,27 @@ import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { toast } from "sonner";
 import { Copy, Download, KeyRound, Plus, X } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import type { Tables } from "@/integrations/supabase/types";
+import { db } from "@/lib/db";
+import type { Tables } from "@/lib/db-types";
 import { useStation } from "@/components/admin/station-context";
 import { useBroadcastStatus, useNow } from "@/hooks/use-station";
-import { createEngineToken, getStorageStatus, testStorage } from "@/lib/station.functions";
+import { getStorageStatus, testStorage } from "@/lib/station.functions";
+import { createEngineLogin, revokeEngineLogin } from "@/lib/engine-login";
+import { OWNER_EMAIL } from "@/lib/firebase-config";
 import { PageHeader, EmptyState } from "@/components/admin/PageHeader";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { StatusChip } from "@/components/broadcast/status";
 import { Button } from "@/components/ui/button";
 import { MediaPicker } from "@/components/schedule/MediaPicker";
-import { ALL_ROLES, ROLE_LABELS, type AppRole } from "@/lib/permissions";
+import { ASSIGNABLE_ROLES, ROLE_LABELS, type AppRole } from "@/lib/permissions";
 import { formatBytes, formatDate, formatTime, isEngineOnline } from "@/lib/broadcast";
 import { copyText } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";
+import FIRESTORE_RULES from "../../../../firestore.rules?raw";
 
-const TABS = ["channel", "broadcast", "engine", "storage", "users", "audit"] as const;
+const TABS = ["channel", "broadcast", "engine", "storage", "firebase", "users", "audit"] as const;
 type Tab = (typeof TABS)[number];
-const TAB_LABELS: Record<Tab, string> = { channel: "Channel", broadcast: "Broadcast output", engine: "Playout engine", storage: "Storage", users: "Users & roles", audit: "Audit log" };
+const TAB_LABELS: Record<Tab, string> = { channel: "Channel", broadcast: "Broadcast output", engine: "Playout engine", storage: "Storage", firebase: "Firebase", users: "Users & roles", audit: "Audit log" };
 
 export const Route = createFileRoute("/_authenticated/admin/settings")({
   validateSearch: (s) => z.object({ tab: z.enum(TABS).optional() }).parse(s),
@@ -48,6 +51,7 @@ function SettingsPage() {
         {tab === "broadcast" && <BroadcastTab />}
         {tab === "engine" && <EngineTab />}
         {tab === "storage" && <StorageTab />}
+        {tab === "firebase" && <FirebaseTab />}
         {tab === "users" && <UsersTab />}
         {tab === "audit" && <AuditTab />}
       </div>
@@ -59,7 +63,7 @@ function useSaveChannel() {
   const { channel } = useStation();
   const qc = useQueryClient();
   return async (patch: Partial<Tables<"channels">>) => {
-    const { error } = await supabase.from("channels").update(patch).eq("id", channel.id);
+    const { error } = await db.from("channels").update(patch).eq("id", channel.id);
     if (error) toast.error(error.message.includes("check") ? "One of the values is out of range" : error.message);
     else {
       toast.success("Settings saved");
@@ -77,7 +81,7 @@ function ChannelTab() {
   const standby = useQuery({
     queryKey: ["standby", channel.standby_media_id],
     enabled: !!channel.standby_media_id,
-    queryFn: async () => (await supabase.from("media_assets").select("id, title").eq("id", channel.standby_media_id!).maybeSingle()).data,
+    queryFn: async () => (await db.from("media_assets").select("id, title").eq("id", channel.standby_media_id!).maybeSingle()).data,
   });
   return (
     <fieldset disabled={!can("settings")} className="panel grid max-w-3xl gap-3 p-4 text-sm md:grid-cols-2">
@@ -123,12 +127,11 @@ function BroadcastTab() {
 }
 
 function EngineTab() {
-  const { channel, can } = useStation();
+  const { channel, can, user } = useStation();
   const qc = useQueryClient();
   const now = useNow(5000);
   const { data: status } = useBroadcastStatus(channel.id);
   const online = now != null && isEngineOnline(status, now);
-  const create = useServerFn(createEngineToken);
   const [label, setLabel] = useState("Primary playout server");
   const [newToken, setNewToken] = useState<string | null>(null);
   const [origin, setOrigin] = useState("");
@@ -136,10 +139,10 @@ function EngineTab() {
   const tokens = useQuery({
     queryKey: ["engine-tokens", channel.id],
     enabled: can("engine"),
-    queryFn: async () => (await supabase.from("engine_tokens").select("id, label, token_prefix, created_at, last_used_at, revoked_at").eq("channel_id", channel.id).order("created_at", { ascending: false })).data ?? [],
+    queryFn: async () => (await db.from("engine_tokens").select("id, label, token_prefix, created_at, last_used_at, revoked_at").eq("channel_id", channel.id).order("created_at", { ascending: false })).data ?? [],
   });
   const gen = useMutation({
-    mutationFn: () => create({ data: { channelId: channel.id, label } }),
+    mutationFn: () => createEngineLogin(db, { channelId: channel.id, label: label.trim(), createdBy: user.id }),
     onSuccess: (r) => { setNewToken(r.token); qc.invalidateQueries({ queryKey: ["engine-tokens", channel.id] }); },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -182,7 +185,7 @@ function EngineTab() {
               <div key={t.id} className="flex items-center gap-2 border-t border-border/60 pt-1.5">
                 <div className="min-w-0 flex-1"><div className="truncate">{t.label}</div><div className="timecode text-[10px] text-muted-foreground">{t.token_prefix}… · {t.last_used_at ? `used ${formatTime(t.last_used_at, channel.timezone)}` : "never used"}</div></div>
                 {t.revoked_at ? <StatusChip tone="off">Revoked</StatusChip> : (
-                  <ConfirmButton size="xs" variant="ghost" destructive title="Revoke token?" description="The playout server using it will be disconnected immediately." confirmLabel="Revoke" onConfirm={async () => { await supabase.from("engine_tokens").update({ revoked_at: new Date().toISOString() }).eq("id", t.id); qc.invalidateQueries({ queryKey: ["engine-tokens", channel.id] }); }}>Revoke</ConfirmButton>
+                  <ConfirmButton size="xs" variant="ghost" destructive title="Revoke token?" description="The playout server using it will be disconnected immediately." confirmLabel="Revoke" onConfirm={async () => { await revokeEngineLogin(db, t.id); qc.invalidateQueries({ queryKey: ["engine-tokens", channel.id] }); }}>Revoke</ConfirmButton>
                 )}
               </div>
             ))}
@@ -210,7 +213,7 @@ function StorageTab() {
   const usage = useQuery({
     queryKey: ["storage-usage", channel.id],
     queryFn: async () => {
-      const { data } = await supabase.from("media_assets").select("file_size").eq("channel_id", channel.id).limit(10000);
+      const { data } = await db.from("media_assets").select("file_size").eq("channel_id", channel.id).limit(10000);
       return { bytes: (data ?? []).reduce((a, m) => a + (m.file_size ?? 0), 0), count: data?.length ?? 0 };
     },
   });
@@ -241,7 +244,7 @@ function StorageTab() {
         </div>
         {!status.data?.configured && (
           <div className="border-t border-border p-3 text-xs text-muted-foreground">
-            Storage details are kept as private project secrets and never reach the browser. Connect either your upload service (<code>UPLOAD_WORKER_URL</code> + <code>UPLOAD_TOKEN</code>) or R2 access keys (<code>R2_ACCOUNT_ID</code>, <code>R2_ACCESS_KEY_ID</code>, <code>R2_SECRET_ACCESS_KEY</code>, <code>R2_BUCKET</code>). Ask the assistant to add them.
+            Your upload service address and token are built into the app's server code, so every copy of this project uploads without re-entering them. They never reach the browser.
           </div>
         )}
       </section>
@@ -255,27 +258,23 @@ function StorageTab() {
 }
 
 function UsersTab() {
-  const { can, user } = useStation();
+  const { can } = useStation();
   const qc = useQueryClient();
   const data = useQuery({
     queryKey: ["staff"],
     enabled: can("users"),
     queryFn: async () => {
       const [{ data: profiles }, { data: roles }] = await Promise.all([
-        supabase.from("profiles").select("id, email, display_name, created_at").order("created_at"),
-        supabase.from("user_roles").select("id, user_id, role"),
+        db.from("profiles").select("id, email, display_name, created_at").order("created_at"),
+        db.from("user_roles").select("*"),
       ]);
-      return (profiles ?? []).map((p) => ({ ...p, roles: (roles ?? []).filter((r) => r.user_id === p.id) }));
+      const byUser = new Map((roles ?? []).map((r) => [r.user_id, (r.roles ?? []) as AppRole[]]));
+      return (profiles ?? []).map((p) => ({ ...p, isOwner: p.email?.toLowerCase() === OWNER_EMAIL, roles: byUser.get(p.id) ?? [] }));
     },
   });
-  if (!can("users")) return <EmptyState title="Super Admin only">Only Super Admins can manage staff accounts and roles.</EmptyState>;
-  async function grant(userId: string, role: AppRole) {
-    const { error } = await supabase.from("user_roles").insert({ user_id: userId, role });
-    if (error) toast.error(error.message.includes("duplicate") ? "Role already granted" : error.message);
-    qc.invalidateQueries({ queryKey: ["staff"] });
-  }
-  async function revoke(id: string) {
-    const { error } = await supabase.from("user_roles").delete().eq("id", id);
+  if (!can("users")) return <EmptyState title="Super Admin only">Only the Super Admin ({OWNER_EMAIL}) can manage staff accounts and roles.</EmptyState>;
+  async function save(userId: string, email: string | null, roles: AppRole[]) {
+    const { error } = await db.from("user_roles").upsert({ user_id: userId, email, roles });
     if (error) toast.error(error.message);
     qc.invalidateQueries({ queryKey: ["staff"] });
   }
@@ -290,27 +289,54 @@ function UsersTab() {
               <td><div className="font-medium">{p.display_name ?? p.email}</div><div className="text-[11px] text-muted-foreground">{p.email}</div></td>
               <td>
                 <div className="flex flex-wrap gap-1">
-                  {p.roles.length === 0 && <StatusChip tone="warn">No access</StatusChip>}
-                  {p.roles.map((r) => (
-                    <span key={r.id} className="inline-flex items-center gap-1 rounded-sm bg-accent px-1.5 py-0.5 text-[11px]">
-                      {ROLE_LABELS[r.role]}
-                      {!(p.id === user.id && r.role === "super_admin") && <button aria-label={`Remove ${ROLE_LABELS[r.role]}`} onClick={() => revoke(r.id)}><X className="size-3" /></button>}
+                  {p.isOwner && <StatusChip tone="preview">{ROLE_LABELS.super_admin}</StatusChip>}
+                  {!p.isOwner && p.roles.length === 0 && <StatusChip tone="warn">No access</StatusChip>}
+                  {!p.isOwner && p.roles.map((r) => (
+                    <span key={r} className="inline-flex items-center gap-1 rounded-sm bg-accent px-1.5 py-0.5 text-[11px]">
+                      {ROLE_LABELS[r]}
+                      <button aria-label={`Remove ${ROLE_LABELS[r]}`} onClick={() => save(p.id, p.email, p.roles.filter((x) => x !== r))}><X className="size-3" /></button>
                     </span>
                   ))}
                 </div>
               </td>
               <td>
-                <select className="field h-7" value="" onChange={(e) => e.target.value && grant(p.id, e.target.value as AppRole)}>
-                  <option value="">Add role…</option>
-                  {ALL_ROLES.filter((r) => !p.roles.some((x) => x.role === r)).map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
-                </select>
+                {p.isOwner ? <span className="text-[11px] text-muted-foreground">Has every permission</span> : (
+                  <select className="field h-7" value="" onChange={(e) => e.target.value && save(p.id, p.email, [...p.roles, e.target.value as AppRole])}>
+                    <option value="">Add role…</option>
+                    {ASSIGNABLE_ROLES.filter((r) => !p.roles.includes(r)).map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+                  </select>
+                )}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-      <div className="flex items-center gap-1 border-t border-border px-3 py-2 text-[11px] text-muted-foreground"><Plus className="size-3" />Roles take effect on the user's next page load.</div>
+      <div className="flex items-center gap-1 border-t border-border px-3 py-2 text-[11px] text-muted-foreground"><Plus className="size-3" />Roles take effect on the user's next page load. Only {OWNER_EMAIL} can be Super Admin.</div>
     </section>
+  );
+}
+
+function FirebaseTab() {
+  const { can } = useStation();
+  if (!can("users")) return <EmptyState title="Super Admin only">Only the Super Admin ({OWNER_EMAIL}) can see the Firebase setup.</EmptyState>;
+  const steps = [
+    "Open console.firebase.google.com and choose the project moviemax-tv.",
+    "Firestore Database → Rules: delete everything there, paste the rules below, then press Publish.",
+    "Authentication → Sign-in method: switch on Email/Password and Google.",
+    "Authentication → Settings → Authorised domains: add this website's address (and your published address).",
+  ];
+  return (
+    <div className="grid max-w-5xl gap-3">
+      <section className="panel">
+        <div className="panel-header">Firebase setup · project moviemax-tv</div>
+        <ol className="list-decimal space-y-1 p-3 pl-8 text-xs">{steps.map((t) => <li key={t}>{t}</li>)}</ol>
+        <p className="border-t border-border px-3 py-2 text-[11px] text-muted-foreground">Until the rules are published your database is open to anyone (Firebase "test mode"), and test mode stops working after 30 days. The rules make {OWNER_EMAIL} the only Super Admin and give everyone else only the access their role allows.</p>
+      </section>
+      <section className="panel">
+        <div className="panel-header">Security rules<Button size="xs" variant="brand" onClick={() => copyText(FIRESTORE_RULES, "Rules copied — paste them in Firestore → Rules")}><Copy />Copy rules</Button></div>
+        <pre className="timecode max-h-[420px] overflow-auto p-3 text-[11px] leading-relaxed text-muted-foreground">{FIRESTORE_RULES}</pre>
+      </section>
+    </div>
   );
 }
 
@@ -321,8 +347,8 @@ function AuditTab() {
     enabled: can("audit"),
     queryFn: async () => {
       const [{ data: rows }, { data: profiles }] = await Promise.all([
-        supabase.from("audit_logs").select("*").order("created_at", { ascending: false }).limit(200),
-        supabase.from("profiles").select("id, email"),
+        db.from("audit_logs").select("*").order("created_at", { ascending: false }).limit(200),
+        db.from("profiles").select("id, email"),
       ]);
       const names = new Map((profiles ?? []).map((p) => [p.id, p.email]));
       return (rows ?? []).map((r) => ({ ...r, actor: r.actor_id ? names.get(r.actor_id) ?? "Staff member" : "System / engine" }));

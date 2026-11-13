@@ -5,7 +5,7 @@ import {
   Activity, Bell, CalendarRange, ChevronsLeft, ChevronsRight, Clapperboard, Film, LayoutDashboard, ListVideo,
   LogOut, Radio, Search, Settings, Share2, Layers, ExternalLink,
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import { useStation } from "@/components/admin/station-context";
 import { useBroadcastStatus, useNow, useRealtimeInvalidate } from "@/hooks/use-station";
 import { formatClock, formatDate, isEngineOnline, isOnAir, VIEWER_ACTIVE_MS } from "@/lib/broadcast";
@@ -67,7 +67,7 @@ export function AdminShell({ children, onSignOut }: { children: React.ReactNode;
     queryKey: ["viewers-live", channel.id],
     refetchInterval: 15000,
     queryFn: async () => {
-      const { count } = await supabase.from("viewer_sessions").select("id", { count: "exact", head: true }).eq("channel_id", channel.id).gte("last_seen_at", new Date(Date.now() - VIEWER_ACTIVE_MS).toISOString());
+      const { count } = await db.from("viewer_sessions").select("id", { count: "exact", head: true }).eq("channel_id", channel.id).gte("last_seen_at", new Date(Date.now() - VIEWER_ACTIVE_MS).toISOString());
       return count ?? 0;
     },
   });
@@ -178,7 +178,7 @@ function Notifications() {
   const { data } = useQuery({
     queryKey: ["alerts", channel.id],
     queryFn: async () => {
-      const { data } = await supabase.from("broadcast_events").select("id, severity, message, occurred_at, event_type").eq("channel_id", channel.id).in("severity", ["warning", "error", "critical"]).order("occurred_at", { ascending: false }).limit(25);
+      const { data } = await db.from("broadcast_events").select("id, severity, message, occurred_at, event_type").eq("channel_id", channel.id).in("severity", ["warning", "error", "critical"]).order("occurred_at", { ascending: false }).limit(25);
       return data ?? [];
     },
   });
@@ -214,7 +214,7 @@ function CommandPalette({ open, onOpenChange, onNavigate, onOpenMedia }: { open:
     queryKey: ["palette-media", q],
     enabled: open && q.trim().length > 1,
     queryFn: async () => {
-      const { data } = await supabase.from("media_assets").select("id, title, category").eq("channel_id", channel.id).ilike("title", `%${q.trim()}%`).limit(8);
+      const { data } = await db.from("media_assets").select("id, title, category").eq("channel_id", channel.id).ilike("title", `%${q.trim()}%`).limit(8);
       return data ?? [];
     },
   });

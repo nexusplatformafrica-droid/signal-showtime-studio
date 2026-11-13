@@ -48,7 +48,7 @@ const backend: Backend = {
         const uid = auth.currentUser?.uid;
         if (!uid) return;
         const ids = rows.map((r) => r.id).slice(0, 20);
-        const label = rows.length === 1 ? String(rows[0]?.title ?? rows[0]?.name ?? rows[0]?.command ?? "") : `${rows.length} items`;
+        const label = rows.length === 1 ? String(rows[0]?.["title"] ?? rows[0]?.["name"] ?? rows[0]?.["command"] ?? "") : `${rows.length} items`;
         await db.from("audit_logs").insert({ action, entity: table, entity_id: ids[0] ?? null, actor_id: uid, details: { ids, label } });
       } catch {
         /* the audit trail never blocks the action itself */

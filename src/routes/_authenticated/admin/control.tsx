@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { FastForward, Pause, Play, Radio, RotateCcw, Siren, Square, Tv, Unplug, ArrowRightLeft, RefreshCw } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import { playbackUrl } from "@/lib/stream-url";
 import { useStation } from "@/components/admin/station-context";
 import { useBroadcastStatus, useNow, useRealtimeInvalidate } from "@/hooks/use-station";
@@ -44,7 +44,7 @@ function ControlRoom() {
   const inputs = useQuery({
     queryKey: ["live-inputs", channel.id],
     queryFn: async () => {
-      const { data } = await supabase.from("live_inputs").select("id, name, protocol, connected, bitrate_kbps, resolution, fps, audio_ok, last_seen_at, enabled").eq("channel_id", channel.id).order("created_at");
+      const { data } = await db.from("live_inputs").select("id, name, protocol, connected, bitrate_kbps, resolution, fps, audio_ok, last_seen_at, enabled").eq("channel_id", channel.id).order("created_at");
       return data ?? [];
     },
   });
@@ -53,7 +53,7 @@ function ControlRoom() {
   const commands = useQuery({
     queryKey: ["commands", channel.id],
     queryFn: async () => {
-      const { data } = await supabase.from("broadcast_commands").select("*").eq("channel_id", channel.id).order("created_at", { ascending: false }).limit(25);
+      const { data } = await db.from("broadcast_commands").select("*").eq("channel_id", channel.id).order("created_at", { ascending: false }).limit(25);
       return data ?? [];
     },
   });
@@ -61,7 +61,7 @@ function ControlRoom() {
   const events = useQuery({
     queryKey: ["events", channel.id],
     queryFn: async () => {
-      const { data } = await supabase.from("broadcast_events").select("*").eq("channel_id", channel.id).order("occurred_at", { ascending: false }).limit(50);
+      const { data } = await db.from("broadcast_events").select("*").eq("channel_id", channel.id).order("occurred_at", { ascending: false }).limit(50);
       return data ?? [];
     },
   });

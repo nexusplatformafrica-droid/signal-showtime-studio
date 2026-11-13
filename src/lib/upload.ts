@@ -147,3 +147,13 @@ export async function uploadMultipart(opts: { file: File; mediaId: string; repla
   onProgress(100);
   return res;
 }
+
+/** Uploads a picture (thumbnail, logo, card image) to the station's bucket and returns its public link. */
+export async function uploadPicture(file: Blob, folder: "thumbnails" | "logos" | "brand"): Promise<string> {
+  const { startImageUpload } = await import("@/lib/station.functions");
+  const contentType = file.type || "image/jpeg";
+  const { uploadUrl, publicUrl } = await startImageUpload({ data: { folder, filename: `picture.${contentType.split("/")[1] ?? "jpg"}`, contentType } });
+  const res = await fetch(uploadUrl, { method: "PUT", body: file, headers: { "content-type": contentType } });
+  if (!res.ok) throw new Error(`The picture could not be uploaded (HTTP ${res.status}).`);
+  return publicUrl;
+}

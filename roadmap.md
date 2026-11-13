@@ -8,7 +8,9 @@
 
 ## Open
 - [x] Connect Cloudflare R2 through the user's upload Worker
-- [ ] Switch the database to Firebase? (waiting on the user's decision)
+- [x] Switch all data and sign-in to Firebase (Super Admin fixed to mainplatform.nexus@gmail.com; Settings → Firebase tab with rules)
+- [ ] Publish firestore.rules in the Firebase console and switch on Email/Password + Google sign-in (user action, steps in Settings → Firebase)
+- [ ] Replace the upload token `*` with a long random one on the Cloudflare Worker (user action)
 - [x] Add media by pasting an R2 link (public or connected-bucket)
 - [x] Wowza connected as streaming provider (destination + secure relay link saved)
 - [x] Downloadable playout engine (public/engine/movie-max-engine.mjs) + setup guide in Settings → Playout engine

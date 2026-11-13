@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Activity, Check, Copy, X, CircleDashed } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import { useStation } from "@/components/admin/station-context";
 import { useBroadcastStatus, useNow } from "@/hooks/use-station";
 import { runStreamHealthCheck } from "@/lib/station.functions";
@@ -46,20 +46,20 @@ function EndpointsPage() {
   });
   const history = useQuery({
     queryKey: ["health-checks", channel.id],
-    queryFn: async () => (await supabase.from("stream_health_checks").select("id, status, checked_at, url, details").eq("channel_id", channel.id).order("checked_at", { ascending: false }).limit(20)).data ?? [],
+    queryFn: async () => (await db.from("stream_health_checks").select("id, status, checked_at, url, details").eq("channel_id", channel.id).order("checked_at", { ascending: false }).limit(20)).data ?? [],
   });
   const last = run.data ?? null;
   const lastStatus = last?.status ?? history.data?.[0]?.status ?? "not_configured";
   const inputs = useQuery({
     queryKey: ["live-inputs-ingest", channel.id],
     enabled: can("live"),
-    queryFn: async () => (await supabase.from("live_inputs").select("id, name, protocol, ingest_url").eq("channel_id", channel.id)).data ?? [],
+    queryFn: async () => (await db.from("live_inputs").select("id, name, protocol, ingest_url").eq("channel_id", channel.id)).data ?? [],
   });
 
   const dest = useQuery({
     queryKey: ["stream-destination", channel.id],
     enabled: can("live"),
-    queryFn: async () => (await supabase.from("stream_destinations").select("id, provider, rtmp_url, stream_name, username, enabled").eq("channel_id", channel.id).maybeSingle()).data ?? null,
+    queryFn: async () => (await db.from("stream_destinations").select("id, provider, rtmp_url, stream_name, username, enabled").eq("channel_id", channel.id).maybeSingle()).data ?? null,
   });
   const [destForm, setDestForm] = useState<{ provider: string; rtmp_url: string; stream_name: string; username: string } | null>(null);
   const d = destForm ?? { provider: dest.data?.provider ?? "Wowza Streaming Engine", rtmp_url: dest.data?.rtmp_url ?? "", stream_name: dest.data?.stream_name ?? "", username: dest.data?.username ?? "" };
@@ -71,7 +71,7 @@ function EndpointsPage() {
       return;
     }
     const row = { channel_id: channel.id, provider: d.provider.trim() || "Wowza Streaming Engine", rtmp_url: rtmp || null, stream_name: d.stream_name.trim() || null, username: d.username.trim() || null, updated_at: new Date().toISOString() };
-    const { error } = await supabase.from("stream_destinations").upsert(row, { onConflict: "channel_id" });
+    const { error } = await db.from("stream_destinations").upsert(row, { onConflict: "channel_id" });
     if (error) toast.error(error.message);
     else {
       toast.success("Broadcast destination saved");
@@ -91,7 +91,7 @@ function EndpointsPage() {
       toast.error("Enter a domain like tv.mydomain.com");
       return;
     }
-    const { error } = await supabase.from("channels").update({ hls_url: hls || null, streaming_provider: form.streaming_provider.trim() || null, custom_domain: domain || null, website_url: form.website_url.trim() || null }).eq("id", channel.id);
+    const { error } = await db.from("channels").update({ hls_url: hls || null, streaming_provider: form.streaming_provider.trim() || null, custom_domain: domain || null, website_url: form.website_url.trim() || null }).eq("id", channel.id);
     if (error) toast.error(error.message);
     else {
       toast.success("Streaming endpoints saved");

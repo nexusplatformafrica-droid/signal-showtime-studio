@@ -3,8 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Copy, GripVertical, Plus, Trash2, X } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import type { Tables } from "@/integrations/supabase/types";
+import { db } from "@/lib/db";
+import type { Tables } from "@/lib/db-types";
 import { useStation } from "@/components/admin/station-context";
 import { PageHeader, EmptyState } from "@/components/admin/PageHeader";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
@@ -29,9 +29,13 @@ function PlaylistsPage() {
   const playlists = useQuery({
     queryKey: ["playlists", channel.id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("playlists").select("*, playlist_items(count)").eq("channel_id", channel.id).order("name");
+      const { data, error } = await db.from("playlists").select("*").eq("channel_id", channel.id).order("name");
       if (error) throw error;
-      return data ?? [];
+      const ids = (data ?? []).map((p) => p.id);
+      const { data: items } = ids.length ? await db.from("playlist_items").select("playlist_id").in("playlist_id", ids) : { data: [] as { playlist_id: string }[] };
+      const counts = new Map<string, number>();
+      for (const i of items ?? []) counts.set(i.playlist_id, (counts.get(i.playlist_id) ?? 0) + 1);
+      return (data ?? []).map((p) => ({ ...p, playlist_items: [{ count: counts.get(p.id) ?? 0 }] }));
     },
   });
   useEffect(() => {
@@ -39,7 +43,7 @@ function PlaylistsPage() {
   }, [playlists.data, activeId]);
 
   async function create() {
-    const { data, error } = await supabase.from("playlists").insert({ channel_id: channel.id, name: "New playlist", kind: "custom", created_by: user.id }).select("id").single();
+    const { data, error } = await db.from("playlists").insert({ channel_id: channel.id, name: "New playlist", kind: "custom", created_by: user.id }).select("id").single();
     if (error || !data) {
       toast.error(error?.message ?? "Could not create playlist");
       return;
@@ -86,9 +90,15 @@ function PlaylistEditor({ playlist, canEdit, onDeleted, onDuplicated }: { playli
   const items = useQuery({
     queryKey: ["playlist-items", playlist.id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("playlist_items").select("id, position, media:media_assets(id, title, category, duration_seconds, thumbnail_url, status, available)").eq("playlist_id", playlist.id).order("position");
+      const { data, error } = await db.from("playlist_items").select("id, position, media_id").eq("playlist_id", playlist.id).order("position");
       if (error) throw error;
-      return (data ?? []) as unknown as Item[];
+      const mediaIds = [...new Set((data ?? []).map((i) => i.media_id))];
+      const { data: media } = mediaIds.length ? await db.from("media_assets").select("*").in("id", mediaIds) : { data: [] as Tables<"media_assets">[] };
+      const byId = new Map((media ?? []).map((m) => [m.id, m]));
+      return (data ?? []).map((i) => {
+        const m = byId.get(i.media_id);
+        return { id: i.id, position: i.position, media: m ? { id: m.id, title: m.title, category: m.category, duration_seconds: m.duration_seconds, thumbnail_url: m.thumbnail_url, status: m.status, available: m.available } : null };
+      }) as Item[];
     },
   });
   const list = items.data ?? [];
@@ -100,14 +110,14 @@ function PlaylistEditor({ playlist, canEdit, onDeleted, onDuplicated }: { playli
   };
 
   async function save(patch: Partial<Playlist> = {}) {
-    const { error } = await supabase.from("playlists").update({ ...form, notes: form.notes || null, ...patch }).eq("id", playlist.id);
+    const { error } = await db.from("playlists").update({ ...form, notes: form.notes || null, ...patch }).eq("id", playlist.id);
     if (error) toast.error(error.message);
     else toast.success("Playlist saved");
     invalidate();
   }
   async function add(mediaId: string) {
     const pos = (list[list.length - 1]?.position ?? 0) + 1;
-    const { error } = await supabase.from("playlist_items").insert({ playlist_id: playlist.id, media_id: mediaId, position: pos });
+    const { error } = await db.from("playlist_items").insert({ playlist_id: playlist.id, media_id: mediaId, position: pos });
     if (error) toast.error(error.message);
     invalidate();
   }
@@ -119,16 +129,16 @@ function PlaylistEditor({ playlist, canEdit, onDeleted, onDuplicated }: { playli
     if (from < 0 || to < 0) return;
     ids.splice(to, 0, ...ids.splice(from, 1));
     qc.setQueryData(["playlist-items", playlist.id], ids.map((id, i) => ({ ...list.find((x) => x.id === id)!, position: i + 1 })));
-    await Promise.all(ids.map((id, i) => supabase.from("playlist_items").update({ position: i + 1 }).eq("id", id)));
+    await Promise.all(ids.map((id, i) => db.from("playlist_items").update({ position: i + 1 }).eq("id", id)));
     invalidate();
   }
   async function duplicate() {
-    const { data, error } = await supabase.from("playlists").insert({ channel_id: channel.id, name: `${playlist.name} (copy)`.slice(0, 120), kind: playlist.kind, shuffle: playlist.shuffle, repeat: playlist.repeat, notes: playlist.notes, created_by: user.id }).select("id").single();
+    const { data, error } = await db.from("playlists").insert({ channel_id: channel.id, name: `${playlist.name} (copy)`.slice(0, 120), kind: playlist.kind, shuffle: playlist.shuffle, repeat: playlist.repeat, notes: playlist.notes, created_by: user.id }).select("id").single();
     if (error || !data) {
       toast.error(error?.message ?? "Could not duplicate");
       return;
     }
-    if (list.length) await supabase.from("playlist_items").insert(list.filter((i) => i.media).map((i) => ({ playlist_id: data.id, media_id: i.media!.id, position: i.position })));
+    if (list.length) await db.from("playlist_items").insert(list.filter((i) => i.media).map((i) => ({ playlist_id: data.id, media_id: i.media!.id, position: i.position })));
     invalidate();
     onDuplicated(data.id);
     toast.success("Playlist duplicated");
@@ -148,7 +158,7 @@ function PlaylistEditor({ playlist, canEdit, onDeleted, onDuplicated }: { playli
             ? <Button type="button" size="xs" variant="panel" onClick={() => save({ published: false })}>Unpublish</Button>
             : <ConfirmButton type="button" size="xs" variant="brand" title="Publish playlist?" description="Published playlists can be scheduled and are delivered to the playout engine." confirmLabel="Publish" onConfirm={() => save({ published: true })}>Publish</ConfirmButton>}
           <Button type="button" size="xs" variant="ghost" onClick={duplicate}><Copy />Duplicate</Button>
-          <ConfirmButton type="button" size="xs" variant="ghost" destructive title="Delete playlist?" description="Schedule slots using this playlist will show missing media." confirmLabel="Delete" onConfirm={async () => { await supabase.from("playlists").delete().eq("id", playlist.id); invalidate(); onDeleted(); }}><Trash2 />Delete</ConfirmButton>
+          <ConfirmButton type="button" size="xs" variant="ghost" destructive title="Delete playlist?" description="Schedule slots using this playlist will show missing media." confirmLabel="Delete" onConfirm={async () => { await db.from("playlists").delete().eq("id", playlist.id); invalidate(); onDeleted(); }}><Trash2 />Delete</ConfirmButton>
         </div>
       </fieldset>
 
@@ -176,7 +186,7 @@ function PlaylistEditor({ playlist, canEdit, onDeleted, onDuplicated }: { playli
               <td className="w-28 text-muted-foreground">{i.media ? CATEGORY_LABELS[i.media.category] : "—"}</td>
               <td className="timecode w-20">{formatDuration(i.media?.duration_seconds == null ? null : Number(i.media.duration_seconds))}</td>
               <td className="w-20">{i.media && (i.media.status !== "ready" || !i.media.available) && <StatusChip tone="warn">{i.media.status}</StatusChip>}</td>
-              <td className="w-8">{canEdit && <button aria-label="Remove item" onClick={async () => { await supabase.from("playlist_items").delete().eq("id", i.id); invalidate(); }}><X className="size-3.5" /></button>}</td>
+              <td className="w-8">{canEdit && <button aria-label="Remove item" onClick={async () => { await db.from("playlist_items").delete().eq("id", i.id); invalidate(); }}><X className="size-3.5" /></button>}</td>
             </tr>
           ))}
         </tbody></table>

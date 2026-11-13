@@ -31,16 +31,16 @@ export function encodeFields(obj: Record<string, unknown>) {
 
 export function decodeValue(v: FsValue): unknown {
   if ("nullValue" in v) return null;
-  if ("booleanValue" in v) return v.booleanValue;
-  if ("integerValue" in v) return Number(v.integerValue);
-  if ("doubleValue" in v) return Number(v.doubleValue);
-  if ("stringValue" in v) return v.stringValue;
-  if ("timestampValue" in v) return new Date(String(v.timestampValue)).toISOString();
-  if ("arrayValue" in v) return (((v.arrayValue as { values?: FsValue[] }).values ?? []) as FsValue[]).map(decodeValue);
-  if ("mapValue" in v) return decodeFields(((v.mapValue as { fields?: Record<string, FsValue> }).fields ?? {}) as Record<string, FsValue>);
-  if ("referenceValue" in v) return v.referenceValue;
-  if ("geoPointValue" in v) return v.geoPointValue;
-  if ("bytesValue" in v) return v.bytesValue;
+  if ("booleanValue" in v) return v["booleanValue"];
+  if ("integerValue" in v) return Number(v["integerValue"]);
+  if ("doubleValue" in v) return Number(v["doubleValue"]);
+  if ("stringValue" in v) return v["stringValue"];
+  if ("timestampValue" in v) return new Date(String(v["timestampValue"])).toISOString();
+  if ("arrayValue" in v) return (((v["arrayValue"] as { values?: FsValue[] }).values ?? []) as FsValue[]).map(decodeValue);
+  if ("mapValue" in v) return decodeFields(((v["mapValue"] as { fields?: Record<string, FsValue> }).fields ?? {}) as Record<string, FsValue>);
+  if ("referenceValue" in v) return v["referenceValue"];
+  if ("geoPointValue" in v) return v["geoPointValue"];
+  if ("bytesValue" in v) return v["bytesValue"];
   return null;
 }
 
@@ -76,7 +76,7 @@ export function createRest(idToken?: string | null) {
     const res = await fetch(`${url}${sep}key=${FIREBASE_CONFIG.apiKey}`, {
       method,
       headers: { "content-type": "application/json", ...(idToken ? { authorization: `Bearer ${idToken}` } : {}) },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? null : JSON.stringify(body),
     });
     const text = await res.text();
     const json = text ? JSON.parse(text) : null;

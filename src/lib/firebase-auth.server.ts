@@ -13,8 +13,8 @@ export async function verifyIdToken(token: string): Promise<VerifiedUser> {
     audience: FIREBASE_CONFIG.projectId,
   });
   if (!payload.sub) throw new Error("Unauthorized");
-  const email = typeof payload.email === "string" ? payload.email : null;
-  const emailVerified = payload.email_verified === true;
+  const email = typeof payload["email"] === "string" ? (payload["email"] as string) : null;
+  const emailVerified = payload["email_verified"] === true;
   return { uid: payload.sub, email, emailVerified, isOwner: isOwnerIdentity(email, emailVerified) };
 }
 

@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, CalendarRange, Clapperboard, Radio, RotateCcw, Siren, Upload, PlayCircle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import { playbackUrl } from "@/lib/stream-url";
 import { useStation } from "@/components/admin/station-context";
 import { useBroadcastStatus, useNow, useRealtimeInvalidate } from "@/hooks/use-station";
@@ -54,7 +54,7 @@ function Overview() {
   const events = useQuery({
     queryKey: ["events-recent", channel.id],
     queryFn: async () => {
-      const { data } = await supabase.from("broadcast_events").select("*").eq("channel_id", channel.id).order("occurred_at", { ascending: false }).limit(60);
+      const { data } = await db.from("broadcast_events").select("*").eq("channel_id", channel.id).order("occurred_at", { ascending: false }).limit(60);
       return data ?? [];
     },
   });
@@ -69,10 +69,10 @@ function Overview() {
       const todayLocal = toZoned(new Date(), tz).date;
       const dayStart = zonedToUtc(todayLocal, "00:00", tz).toISOString();
       const [live, today, media, inputs] = await Promise.all([
-        supabase.from("viewer_sessions").select("id", { count: "exact", head: true }).eq("channel_id", channel.id).gte("last_seen_at", new Date(Date.now() - VIEWER_ACTIVE_MS).toISOString()),
-        supabase.from("viewer_sessions").select("id", { count: "exact", head: true }).eq("channel_id", channel.id).gte("last_seen_at", dayStart),
-        supabase.from("media_assets").select("file_size").eq("channel_id", channel.id).limit(5000),
-        can("live") ? supabase.from("live_inputs").select("id, name, connected").eq("channel_id", channel.id) : Promise.resolve({ data: [] as { id: string; name: string; connected: boolean }[] }),
+        db.from("viewer_sessions").select("id", { count: "exact", head: true }).eq("channel_id", channel.id).gte("last_seen_at", new Date(Date.now() - VIEWER_ACTIVE_MS).toISOString()),
+        db.from("viewer_sessions").select("id", { count: "exact", head: true }).eq("channel_id", channel.id).gte("last_seen_at", dayStart),
+        db.from("media_assets").select("file_size").eq("channel_id", channel.id).limit(5000),
+        can("live") ? db.from("live_inputs").select("id, name, connected").eq("channel_id", channel.id) : Promise.resolve({ data: [] as { id: string; name: string; connected: boolean }[] }),
       ]);
       return {
         live: live.count ?? 0,

@@ -4,8 +4,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Camera, Copy, Eye, EyeOff, MonitorUp, Mic, Plus, Radio, RefreshCw, RotateCcw, Square, Unplug } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import type { Tables } from "@/integrations/supabase/types";
+import { db } from "@/lib/db";
+import type { Tables } from "@/lib/db-types";
 import { useStation } from "@/components/admin/station-context";
 import { useBroadcastStatus, useNow, useRealtimeInvalidate } from "@/hooks/use-station";
 import { useIssueCommand } from "@/hooks/use-commands";
@@ -37,14 +37,14 @@ function LivePage() {
     queryKey: ["live-inputs-full", channel.id],
     enabled: allowed,
     queryFn: async () => {
-      const { data, error } = await supabase.from("live_inputs").select("*").eq("channel_id", channel.id).order("created_at");
+      const { data, error } = await db.from("live_inputs").select("*").eq("channel_id", channel.id).order("created_at");
       if (error) throw error;
       return data ?? [];
     },
   });
 
   async function setReturn(v: string) {
-    const { error } = await supabase.from("channels").update({ live_return_behaviour: v }).eq("id", channel.id);
+    const { error } = await db.from("channels").update({ live_return_behaviour: v }).eq("id", channel.id);
     if (error) toast.error(error.message);
     else {
       toast.success("Return behaviour saved");
@@ -122,7 +122,7 @@ function InputRow({ input, engineOnline, onTake }: { input: LiveInput; engineOnl
       toast.error("Use an rtmp://, rtmps://, srt:// or https:// (WHIP) address");
       return;
     }
-    const { error } = await supabase.from("live_inputs").update({ ingest_url: v || null }).eq("id", input.id);
+    const { error } = await db.from("live_inputs").update({ ingest_url: v || null }).eq("id", input.id);
     if (error) toast.error(error.message);
     else toast.success("Ingest address saved");
     invalidate();
@@ -154,8 +154,8 @@ function InputRow({ input, engineOnline, onTake }: { input: LiveInput; engineOnl
       <div className="flex flex-wrap items-start gap-1.5">
         <ConfirmButton size="xs" variant="program" disabled={!connected} title={`Take "${input.name}" live?`} description="Scheduled programming is interrupted and this input goes to air for all viewers." confirmLabel="Take live" onConfirm={onTake}><Radio />Take live</ConfirmButton>
         <ConfirmButton size="xs" variant="panel" title="Regenerate stream key?" description="The current key stops working immediately. Update OBS with the new key." confirmLabel="Regenerate" onConfirm={async () => { try { await regen({ data: { inputId: input.id } }); toast.success("New stream key generated"); invalidate(); } catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); } }}><RefreshCw />New key</ConfirmButton>
-        <Button size="xs" variant="ghost" onClick={async () => { await supabase.from("live_inputs").update({ enabled: !input.enabled }).eq("id", input.id); invalidate(); }}>{input.enabled ? "Disable" : "Enable"}</Button>
-        <ConfirmButton size="xs" variant="ghost" destructive title="Delete input?" description="The stream key is revoked permanently." confirmLabel="Delete" onConfirm={async () => { await supabase.from("live_inputs").delete().eq("id", input.id); invalidate(); }}>Delete</ConfirmButton>
+        <Button size="xs" variant="ghost" onClick={async () => { await db.from("live_inputs").update({ enabled: !input.enabled }).eq("id", input.id); invalidate(); }}>{input.enabled ? "Disable" : "Enable"}</Button>
+        <ConfirmButton size="xs" variant="ghost" destructive title="Delete input?" description="The stream key is revoked permanently." confirmLabel="Delete" onConfirm={async () => { await db.from("live_inputs").delete().eq("id", input.id); invalidate(); }}>Delete</ConfirmButton>
       </div>
     </div>
   );

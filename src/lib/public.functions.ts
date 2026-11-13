@@ -1,30 +1,18 @@
 import { createServerFn } from "@tanstack/react-start";
-import { createClient } from "@supabase/supabase-js";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
-import type { Database } from "@/integrations/supabase/types";
 
 export const CHANNEL_SLUG = "movie-max";
 
-function publicClient() {
-  const url = process.env["SUPABASE_URL"]!;
-  const key = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
-  return createClient<Database>(url, key, {
-    auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
-    global: {
-      fetch: (input, init) => {
-        const h = new Headers(init?.headers);
-        if (key.startsWith("sb_") && h.get("Authorization") === `Bearer ${key}`) h.delete("Authorization");
-        h.set("apikey", key);
-        return fetch(input, { ...init, headers: h });
-      },
-    },
-  });
+/** Anonymous Firestore connection: only what firestore.rules make public is reachable. */
+async function publicDb() {
+  const { createRest } = await import("@/lib/db/rest");
+  return createRest(null).db;
 }
 
 /** Public channel data for the viewer website: channel, actual engine status and the published 7-day guide. */
 export const getPublicStation = createServerFn({ method: "GET" }).handler(async () => {
-  const db = publicClient();
+  const db = await publicDb();
   const { data: channel } = await db
     .from("channels")
     .select("id, slug, name, description, timezone, language, visibility, logo_url, hls_url, player_url, website_url")
@@ -60,19 +48,19 @@ export const viewerHeartbeat = createServerFn({ method: "POST" })
     }).parse(d),
   )
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const viewerDb = await publicDb();
     const country = getRequestHeader("cf-ipcountry") ?? null;
-    const { data: existing } = await supabaseAdmin.from("viewer_sessions").select("id, watch_seconds, channel_id").eq("id", data.sessionId).maybeSingle();
+    const { data: existing } = await viewerDb.from("viewer_sessions").select("id, watch_seconds, channel_id").eq("id", data.sessionId).maybeSingle();
     if (existing) {
       if (existing.channel_id !== data.channelId) return { ok: false };
-      await supabaseAdmin
+      await viewerDb
         .from("viewer_sessions")
         .update({ last_seen_at: new Date().toISOString(), watch_seconds: existing.watch_seconds + data.watchedSeconds })
         .eq("id", data.sessionId);
     } else {
-      const { data: ch } = await supabaseAdmin.from("channels").select("id").eq("id", data.channelId).maybeSingle();
+      const { data: ch } = await viewerDb.from("channels").select("id").eq("id", data.channelId).maybeSingle();
       if (!ch) return { ok: false };
-      await supabaseAdmin.from("viewer_sessions").insert({
+      await viewerDb.from("viewer_sessions").insert({
         id: data.sessionId,
         channel_id: data.channelId,
         device: data.device,
@@ -89,7 +77,7 @@ export const viewerHeartbeat = createServerFn({ method: "POST" })
  * playable link for each scheduled file. Only media referenced by published entries is exposed.
  */
 export const getWebPlayout = createServerFn({ method: "GET" }).handler(async () => {
-  const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+  const db = await publicDb();
   const serverTime = Date.now();
   const empty = { serverTime, entries: [], media: [], playlists: [] };
   const { data: channel } = await db.from("channels").select("id").eq("slug", CHANNEL_SLUG).maybeSingle();
@@ -133,7 +121,7 @@ export const getWebPlayout = createServerFn({ method: "GET" }).handler(async () 
 
 /** Published, enabled on-screen graphics for the live output (drafts never appear here). */
 export const getLiveGraphics = createServerFn({ method: "GET" }).handler(async () => {
-  const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+  const db = await publicDb();
   const { data: channel } = await db.from("channels").select("id, timezone").eq("slug", CHANNEL_SLUG).maybeSingle();
   if (!channel) return { timezone: "Africa/Kampala", overlays: [] };
   const { data } = await db

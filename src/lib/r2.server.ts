@@ -3,13 +3,12 @@ import { AwsClient } from "aws4fetch";
 /**
  * Cloudflare R2 access (server-only). Two ways to reach the bucket, both server-side so nothing secret reaches the browser:
  * - "direct": R2 keys stored as project secrets (R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET).
- * - "worker": the station's own upload service on Cloudflare Workers (built in below; UPLOAD_WORKER_URL + UPLOAD_TOKEN
- *   override it), which signs uploads and serves files from the bucket's public address (R2_PUBLIC_BASE_URL).
+ * - "worker": the station's own upload service on Cloudflare Workers (built in below), which signs uploads and serves files from the bucket's public address (R2_PUBLIC_BASE_URL).
  */
 const DEFAULT_WORKER = {
   // The station's upload service on Cloudflare Workers. Kept in code (server-only file, never sent to
   // browsers) on purpose so every copy of this project uploads without re-entering settings.
-  // Project secrets UPLOAD_WORKER_URL / UPLOAD_TOKEN override these when set.
+  // These built-in values always win, so stale project secrets copied into a remix can never break uploads.
   url: "https://moviemax-upload.nexusplatformafrica.workers.dev",
   token: "*",
   accountId: "84a2c76967d223897d4b8b7dfe46ca98",
@@ -33,8 +32,8 @@ export function getR2(): R2 | null {
     const base = `https://${accountId}.r2.cloudflarestorage.com/${bucket}`;
     return { mode: "direct", client, accountId, bucket, base, objectUrl: (key: string) => `${base}/${encKey(key)}` };
   }
-  const workerUrl = process.env["UPLOAD_WORKER_URL"] || DEFAULT_WORKER.url;
-  const token = process.env["UPLOAD_TOKEN"] || DEFAULT_WORKER.token;
+  const workerUrl = DEFAULT_WORKER.url || process.env["UPLOAD_WORKER_URL"];
+  const token = DEFAULT_WORKER.token || process.env["UPLOAD_TOKEN"];
   if (workerUrl && token) {
     return {
       mode: "worker",
@@ -64,7 +63,7 @@ export async function workerCall<T>(r2: Worker, path: string, body: unknown): Pr
   const text = await res.text();
   if (!res.ok) {
     console.error(`Upload service ${path} failed [${res.status}]: ${text.slice(0, 500)}`);
-    if (res.status === 401) throw new Error("The upload service refused the upload token. Make sure UPLOAD_TOKEN matches the one set on the Cloudflare worker.");
+    if (res.status === 401) throw new Error("The upload service refused the upload token. Make sure the token built into the app matches the one set on the Cloudflare worker.");
     throw new Error(`Upload service error [${res.status}]: ${text.slice(0, 300)}`);
   }
   return JSON.parse(text) as T;

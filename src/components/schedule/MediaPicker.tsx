@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Film, Search } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import type { Tables } from "@/integrations/supabase/types";
+import { db } from "@/lib/db";
+import type { Tables } from "@/lib/db-types";
 import { CATEGORY_LABELS, type MediaCategory } from "@/lib/labels";
 import { formatDuration } from "@/lib/broadcast";
 
@@ -15,7 +15,7 @@ export function MediaPicker({ channelId, onPick, category, placeholder = "Search
     queryKey: ["media-picker", channelId, q, category],
     enabled: open,
     queryFn: async () => {
-      let query = supabase.from("media_assets").select("id, title, category, duration_seconds, thumbnail_url, status, available, description").eq("channel_id", channelId).neq("status", "archived").order("title").limit(25);
+      let query = db.from("media_assets").select("id, title, category, duration_seconds, thumbnail_url, status, available, description").eq("channel_id", channelId).neq("status", "archived").order("title").limit(25);
       if (q.trim()) query = query.ilike("title", `%${q.trim()}%`);
       if (category) query = query.eq("category", category);
       return (await query).data ?? [];

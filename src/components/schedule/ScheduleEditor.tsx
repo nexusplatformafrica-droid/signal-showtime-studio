@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AlertTriangle, Trash2, X } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import type { Json } from "@/integrations/supabase/types";
+import { db } from "@/lib/db";
+import type { Json } from "@/lib/db-types";
 import { useStation } from "@/components/admin/station-context";
 import type { ScheduleEntry } from "@/hooks/use-schedule";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -59,7 +59,7 @@ export function ScheduleEditor({ seed, onClose }: { seed: EditorSeed | null; onC
       setDate(s.date); setStart(s.time); setEnd(e.time); setEndDate(e.date); setPriority(entry.priority); setNotes(entry.notes ?? "");
       setCommercial(entry.is_commercial_break); setFreq("none");
       setMedia(null);
-      if (entry.media_id) supabase.from("media_assets").select("id, title, category, duration_seconds, thumbnail_url, status, available, description").eq("id", entry.media_id).maybeSingle().then(({ data }) => setMedia(data ?? null));
+      if (entry.media_id) db.from("media_assets").select("id, title, category, duration_seconds, thumbnail_url, status, available, description").eq("id", entry.media_id).maybeSingle().then(({ data }) => setMedia(data ?? null));
     } else {
       const d = seed.date ?? toZoned(new Date(), tz).date;
       setTitle(""); setDescription(""); setCategory("movie"); setMode("fixed"); setSourceKind("media"); setMedia(null); setPlaylistId(""); setThumb(null);
@@ -73,7 +73,7 @@ export function ScheduleEditor({ seed, onClose }: { seed: EditorSeed | null; onC
   const playlists = useQuery({
     queryKey: ["playlists-lite", channel.id],
     enabled: !!seed,
-    queryFn: async () => (await supabase.from("playlists").select("id, name, kind").eq("channel_id", channel.id).order("name")).data ?? [],
+    queryFn: async () => (await db.from("playlists").select("id, name, kind").eq("channel_id", channel.id).order("name")).data ?? [],
   });
 
   const startsAt = date && start ? zonedToUtc(date, start, tz) : null;
@@ -91,7 +91,7 @@ export function ScheduleEditor({ seed, onClose }: { seed: EditorSeed | null; onC
     queryKey: ["schedule-conflicts", channel.id, startsAt?.toISOString(), endsAt?.toISOString(), entry?.id],
     enabled: !!startsAt && !!endsAt && !!seed,
     queryFn: async () => {
-      const { data } = await supabase.from("schedule_entries").select("id, title, starts_at, ends_at, status").eq("channel_id", channel.id).neq("status", "cancelled").lt("starts_at", endsAt!.toISOString()).gt("ends_at", startsAt!.toISOString());
+      const { data } = await db.from("schedule_entries").select("id, title, starts_at, ends_at, status").eq("channel_id", channel.id).neq("status", "cancelled").lt("starts_at", endsAt!.toISOString()).gt("ends_at", startsAt!.toISOString());
       return (data ?? []).filter((d) => d.id !== entry?.id);
     },
   });
@@ -121,7 +121,7 @@ export function ScheduleEditor({ seed, onClose }: { seed: EditorSeed | null; onC
 
   async function startAfterPrevious() {
     if (!startsAt) return;
-    const { data } = await supabase.from("schedule_entries").select("ends_at").eq("channel_id", channel.id).neq("status", "cancelled").lte("ends_at", new Date(startsAt.getTime() + 6 * 3600_000).toISOString()).lt("starts_at", startsAt.toISOString()).order("ends_at", { ascending: false }).limit(1);
+    const { data } = await db.from("schedule_entries").select("ends_at").eq("channel_id", channel.id).neq("status", "cancelled").lte("ends_at", new Date(startsAt.getTime() + 6 * 3600_000).toISOString()).lt("starts_at", startsAt.toISOString()).order("ends_at", { ascending: false }).limit(1);
     const prev = data?.[0];
     if (!prev) { toast.message("No earlier programme found"); return; }
     const prevEnd = new Date(prev.ends_at);
@@ -148,11 +148,11 @@ export function ScheduleEditor({ seed, onClose }: { seed: EditorSeed | null; onC
         published_at: publish ? new Date().toISOString() : entry?.published_at ?? null,
       };
       if (entry) {
-        const { error } = await supabase.from("schedule_entries").update({ ...base, starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString() }).eq("id", entry.id);
+        const { error } = await db.from("schedule_entries").update({ ...base, starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString() }).eq("id", entry.id);
         if (error) throw error;
         toast.success(publish ? "Saved and published" : "Saved");
       } else if (freq === "none") {
-        const { error } = await supabase.from("schedule_entries").insert({ ...base, starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString(), created_by: user.id });
+        const { error } = await db.from("schedule_entries").insert({ ...base, starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString(), created_by: user.id });
         if (error) throw error;
         toast.success(publish ? "Programme scheduled and published" : "Programme saved as draft");
       } else {
@@ -161,11 +161,11 @@ export function ScheduleEditor({ seed, onClose }: { seed: EditorSeed | null; onC
         const rule: RecurrenceRule = { freq, weekdays, startDate: date, endDate: until, startTime: start, durationMinutes: mins };
         const occ = expandRecurrence(rule, tz);
         if (!occ.length) throw new Error("The recurrence produces no programmes");
-        const { data: rec, error: re } = await supabase.from("recurring_schedules").insert({ channel_id: channel.id, rule: rule as unknown as Json, created_by: user.id }).select("id").single();
+        const { data: rec, error: re } = await db.from("recurring_schedules").insert({ channel_id: channel.id, rule: rule as unknown as Json, created_by: user.id }).select("id").single();
         if (re || !rec) throw re ?? new Error("Could not save recurrence");
         const rows = occ.map((o) => ({ ...base, starts_at: o.starts_at.toISOString(), ends_at: o.ends_at.toISOString(), recurrence_id: rec.id, created_by: user.id }));
         for (let i = 0; i < rows.length; i += 200) {
-          const { error } = await supabase.from("schedule_entries").insert(rows.slice(i, i + 200));
+          const { error } = await db.from("schedule_entries").insert(rows.slice(i, i + 200));
           if (error) throw error;
         }
         toast.success(`${rows.length} programmes created`);
@@ -181,7 +181,7 @@ export function ScheduleEditor({ seed, onClose }: { seed: EditorSeed | null; onC
 
   async function setStatus(status: ScheduleEntry["status"]) {
     if (!entry) return;
-    const { error } = await supabase.from("schedule_entries").update({ status }).eq("id", entry.id);
+    const { error } = await db.from("schedule_entries").update({ status }).eq("id", entry.id);
     if (error) { toast.error(error.message); return; }
     qc.invalidateQueries({ queryKey: ["schedule", channel.id] });
     onClose();
@@ -189,8 +189,8 @@ export function ScheduleEditor({ seed, onClose }: { seed: EditorSeed | null; onC
   async function remove(series: boolean) {
     if (!entry) return;
     const q = series && entry.recurrence_id
-      ? supabase.from("schedule_entries").delete().eq("recurrence_id", entry.recurrence_id).gte("starts_at", entry.starts_at)
-      : supabase.from("schedule_entries").delete().eq("id", entry.id);
+      ? db.from("schedule_entries").delete().eq("recurrence_id", entry.recurrence_id).gte("starts_at", entry.starts_at)
+      : db.from("schedule_entries").delete().eq("id", entry.id);
     const { error } = await q;
     if (error) { toast.error(error.message); return; }
     qc.invalidateQueries({ queryKey: ["schedule", channel.id] });

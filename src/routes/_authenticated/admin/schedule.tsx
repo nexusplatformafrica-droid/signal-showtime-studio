@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AlertTriangle, ChevronLeft, ChevronRight, Copy, Plus, Send } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import { useStation } from "@/components/admin/station-context";
 import { useMediaIndex, useScheduleRange, type ScheduleEntry } from "@/hooks/use-schedule";
 import { useNow } from "@/hooks/use-station";
@@ -82,7 +82,7 @@ function SchedulePage() {
 
   async function publish(ids: string[]) {
     if (!ids.length) return;
-    const { error } = await supabase.from("schedule_entries").update({ status: "published", published_at: new Date().toISOString() }).in("id", ids);
+    const { error } = await db.from("schedule_entries").update({ status: "published", published_at: new Date().toISOString() }).in("id", ids);
     if (error) {
       toast.error(error.message);
       return;
@@ -93,7 +93,7 @@ function SchedulePage() {
   }
 
   async function applyMove(entry: ScheduleEntry, starts: Date, ends: Date) {
-    const { error } = await supabase.from("schedule_entries").update({ starts_at: starts.toISOString(), ends_at: ends.toISOString() }).eq("id", entry.id);
+    const { error } = await db.from("schedule_entries").update({ starts_at: starts.toISOString(), ends_at: ends.toISOString() }).eq("id", entry.id);
     if (error) toast.error(error.message);
     else toast.success(`Moved "${entry.title}" to ${formatDate(starts, tz)} ${formatTime(starts, tz)}`);
     refresh();
@@ -154,7 +154,7 @@ function SchedulePage() {
           {view === "list" && (
             <ListView entries={entries} tz={tz} issuesById={issuesById} selected={selected} setSelected={setSelected} onOpen={(e) => setSeed({ entry: e })} canEdit={canEdit}
               onPublish={() => publish([...selected])}
-              onCancel={async () => { await supabase.from("schedule_entries").update({ status: "cancelled" }).in("id", [...selected]); setSelected(new Set()); refresh(); }} />
+              onCancel={async () => { await db.from("schedule_entries").update({ status: "cancelled" }).in("id", [...selected]); setSelected(new Set()); refresh(); }} />
           )}
           {isLoading && <EmptyState title="Loading schedule…" />}
         </div>
@@ -378,7 +378,7 @@ function CopyDialog({ open, onOpenChange, anchor, onDone }: { open: boolean; onO
       const to = zonedToUtc(addDays(srcStart, len), "00:00", tz);
       const shiftMs = +zonedToUtc(tgtStart, "00:00", tz) - +from;
       if (shiftMs === 0) throw new Error("Source and target are the same");
-      const { data, error } = await supabase.from("schedule_entries").select("*").eq("channel_id", channel.id).neq("status", "cancelled").gte("starts_at", from.toISOString()).lt("starts_at", to.toISOString());
+      const { data, error } = await db.from("schedule_entries").select("*").eq("channel_id", channel.id).neq("status", "cancelled").gte("starts_at", from.toISOString()).lt("starts_at", to.toISOString());
       if (error) throw error;
       if (!data?.length) throw new Error("Nothing to copy in the source period");
       const rows = data.map((e) => ({
@@ -387,7 +387,7 @@ function CopyDialog({ open, onOpenChange, anchor, onDone }: { open: boolean; onO
         starts_at: new Date(+new Date(e.starts_at) + shiftMs).toISOString(), ends_at: new Date(+new Date(e.ends_at) + shiftMs).toISOString(),
         status: "draft" as const, created_by: user.id,
       }));
-      const { error: ie } = await supabase.from("schedule_entries").insert(rows);
+      const { error: ie } = await db.from("schedule_entries").insert(rows);
       if (ie) throw ie;
       toast.success(`${rows.length} programmes copied as drafts`);
       onDone();

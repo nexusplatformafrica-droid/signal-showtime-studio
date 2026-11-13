@@ -10,19 +10,8 @@ let cache: { slug: string; url: string | null; at: number } | null = null;
 
 async function originFor(slug: string): Promise<string | null> {
   if (cache && cache.slug === slug && Date.now() - cache.at < 30_000) return cache.url;
-  const { createClient } = await import("@supabase/supabase-js");
-  const key = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
-  const db = createClient(process.env["SUPABASE_URL"]!, key, {
-    auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
-    global: {
-      fetch: (input, init) => {
-        const h = new Headers(init?.headers);
-        if (key.startsWith("sb_") && h.get("Authorization") === `Bearer ${key}`) h.delete("Authorization");
-        h.set("apikey", key);
-        return fetch(input, { ...init, headers: h });
-      },
-    },
-  });
+  const { createRest } = await import("@/lib/db/rest");
+  const { db } = createRest(null);
   const { data } = await db.from("channels").select("hls_url").eq("slug", slug).maybeSingle();
   cache = { slug, url: data?.hls_url ?? null, at: Date.now() };
   return cache.url;

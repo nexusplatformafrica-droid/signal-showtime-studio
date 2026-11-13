@@ -5,8 +5,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { toast } from "sonner";
 import { Archive, FolderPlus, Folder, Trash2, Upload, X, Film, AlertTriangle, ChevronLeft, ChevronRight, Pause, RefreshCcw, Link2, Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import type { Tables } from "@/integrations/supabase/types";
+import { db } from "@/lib/db";
+import type { Tables } from "@/lib/db-types";
 import { useStation } from "@/components/admin/station-context";
 import { PageHeader, EmptyState } from "@/components/admin/PageHeader";
 import { StatusChip } from "@/components/broadcast/status";
@@ -18,7 +18,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { CATEGORIES, CATEGORY_LABELS, CLASSIFICATIONS, type MediaCategory } from "@/lib/labels";
 import { formatBytes, formatDate, formatDuration } from "@/lib/broadcast";
 import { abortMediaUpload, completeMediaUpload, deleteMediaAssets, getMediaPlaybackUrl, getStorageStatus, importMediaLink, signMediaParts, startMediaUpload } from "@/lib/station.functions";
-import { fingerprintOf, getResumable, probeVideo, probeVideoUrl, setResumable, uploadMultipart } from "@/lib/upload";
+import { fingerprintOf, getResumable, probeVideo, probeVideoUrl, setResumable, uploadMultipart, uploadPicture } from "@/lib/upload";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin/media")({
@@ -51,15 +51,16 @@ function MediaLibrary() {
 
   const folders = useQuery({
     queryKey: ["media-folders", channel.id],
-    queryFn: async () => (await supabase.from("media_folders").select("*").eq("channel_id", channel.id).order("name")).data ?? [],
+    queryFn: async () => (await db.from("media_folders").select("*").eq("channel_id", channel.id).order("name")).data ?? [],
   });
 
   const list = useQuery({
     queryKey: ["media", channel.id, q, category, statusF, folder, sort, page],
     placeholderData: keepPreviousData,
     queryFn: async () => {
-      let query = supabase.from("media_assets").select("*", { count: "exact" }).eq("channel_id", channel.id);
-      if (q.trim()) query = query.or(`title.ilike.%${q.trim().replace(/[%,()]/g, "")}%,tags.cs.{${q.trim().replace(/[{},"]/g, "")}}`);
+      let query = db.from("media_assets").select("*", { count: "exact" }).eq("channel_id", channel.id);
+      const needle = q.trim().toLowerCase();
+      if (needle) query = query.where((m) => m.title.toLowerCase().includes(needle) || (m.tags ?? []).some((t) => t.toLowerCase() === needle));
       if (category !== "all") query = query.eq("category", category);
       if (statusF === "active") query = query.neq("status", "archived");
       else if (statusF !== "all") query = query.eq("status", statusF as Media["status"]);
@@ -77,7 +78,7 @@ function MediaLibrary() {
 
   const bulkUpdate = useMutation({
     mutationFn: async (patch: Partial<Media>) => {
-      const { error } = await supabase.from("media_assets").update(patch).in("id", [...selected]);
+      const { error } = await db.from("media_assets").update(patch).in("id", [...selected]);
       if (error) throw error;
     },
     onSuccess: () => { toast.success("Updated"); refresh(); },
@@ -90,7 +91,7 @@ function MediaLibrary() {
   async function newFolder() {
     const name = prompt("Folder name");
     if (!name?.trim()) return;
-    const { error } = await supabase.from("media_folders").insert({ channel_id: channel.id, name: name.trim().slice(0, 80) });
+    const { error } = await db.from("media_folders").insert({ channel_id: channel.id, name: name.trim().slice(0, 80) });
     if (error) toast.error(error.message);
     else qc.invalidateQueries({ queryKey: ["media-folders", channel.id] });
   }
@@ -212,7 +213,7 @@ function MediaEditor({ media, onClose, folders, canEdit, onChanged, storageReady
 
   async function save() {
     if (!media) return;
-    const { error } = await supabase.from("media_assets").update({ ...form, tags: tags.split(",").map((t) => t.trim()).filter(Boolean).slice(0, 30) }).eq("id", media.id);
+    const { error } = await db.from("media_assets").update({ ...form, tags: tags.split(",").map((t) => t.trim()).filter(Boolean).slice(0, 30) }).eq("id", media.id);
     if (error) {
       toast.error(error.message);
       return;
@@ -228,7 +229,7 @@ function MediaEditor({ media, onClose, folders, canEdit, onChanged, storageReady
       const probe = await probeVideo(file);
       setReplaceProgress(0);
       await uploadMultipart({ file, mediaId: media.id, replace: true, fns, onProgress: setReplaceProgress, signal: new AbortController().signal });
-      await supabase.from("media_assets").update({ original_filename: file.name, mime_type: file.type || null, duration_seconds: probe.duration, width: probe.width, height: probe.height, fingerprint: fingerprintOf(file) }).eq("id", media.id);
+      await db.from("media_assets").update({ original_filename: file.name, mime_type: file.type || null, duration_seconds: probe.duration, width: probe.width, height: probe.height, fingerprint: fingerprintOf(file) }).eq("id", media.id);
       toast.success("Media file replaced");
       onChanged();
     } catch (e) {
@@ -270,7 +271,7 @@ function MediaEditor({ media, onClose, folders, canEdit, onChanged, storageReady
               <Button size="sm" variant="brand" disabled={!canEdit} onClick={save}>Save</Button>
               <input ref={replaceInput} type="file" accept="video/*,.mkv,.mxf,.ts" hidden onChange={(e) => e.target.files?.[0] && replace(e.target.files[0])} />
               <Button size="sm" variant="panel" disabled={!canEdit || !storageReady || replaceProgress != null || !!media.source_url} onClick={() => replaceInput.current?.click()}><RefreshCcw />Replace file</Button>
-              <Button size="sm" variant="panel" disabled={!canEdit} onClick={async () => { await supabase.from("media_assets").update({ status: media.status === "archived" ? "ready" : "archived", archived_at: media.status === "archived" ? null : new Date().toISOString() }).eq("id", media.id); onChanged(); onClose(); }}>
+              <Button size="sm" variant="panel" disabled={!canEdit} onClick={async () => { await db.from("media_assets").update({ status: media.status === "archived" ? "ready" : "archived", archived_at: media.status === "archived" ? null : new Date().toISOString() }).eq("id", media.id); onChanged(); onClose(); }}>
                 <Archive />{media.status === "archived" ? "Restore" : "Archive"}
               </Button>
               <ConfirmButton size="sm" variant="ghost" disabled={!canEdit} destructive title="Delete media?" description={media.source_url ? `"${media.title}" will be removed from the library. The file itself stays in your R2 bucket.` : `"${media.title}" will be removed from storage permanently.`} confirmLabel="Delete" onConfirm={async () => { try { await del({ data: { ids: [media.id] } }); onChanged(); onClose(); } catch (e) { toast.error(e instanceof Error ? e.message : "Delete failed"); } }}>
@@ -313,7 +314,7 @@ function UploadDialog({ open, onOpenChange, folderId, onDone, storageReady }: { 
   async function addFiles(files: FileList | File[]) {
     const arr = [...files].filter((f) => f.size > 0);
     const fps = arr.map(fingerprintOf);
-    const { data: dupes } = await supabase.from("media_assets").select("title, fingerprint").eq("channel_id", channel.id).in("fingerprint", fps);
+    const { data: dupes } = await db.from("media_assets").select("title, fingerprint").eq("channel_id", channel.id).in("fingerprint", fps);
     const dupeMap = new Map((dupes ?? []).map((d) => [d.fingerprint, d.title]));
     setItems((list) => [...list, ...arr.map((file) => ({ id: crypto.randomUUID(), file, progress: 0, state: "queued" as const, duplicate: dupeMap.get(fingerprintOf(file)) }))]);
   }
@@ -324,13 +325,13 @@ function UploadDialog({ open, onOpenChange, folderId, onDone, storageReady }: { 
     try {
       let mediaId = item.mediaId ?? getResumable(item.file) ?? undefined;
       if (mediaId) {
-        const { data } = await supabase.from("media_assets").select("id, status").eq("id", mediaId).maybeSingle();
+        const { data } = await db.from("media_assets").select("id, status").eq("id", mediaId).maybeSingle();
         if (!data || data.status === "ready") mediaId = undefined;
       }
       if (!mediaId) {
         const probe = await probeVideo(item.file);
         const title = item.file.name.replace(/\.[^.]+$/, "").replace(/[._]+/g, " ").trim().slice(0, 200) || "Untitled";
-        const { data: row, error } = await supabase.from("media_assets").insert({
+        const { data: row, error } = await db.from("media_assets").insert({
           channel_id: channel.id, folder_id: folderId, title, category, status: "uploading",
           duration_seconds: probe.duration, width: probe.width, height: probe.height,
           file_size: item.file.size, mime_type: item.file.type || null, original_filename: item.file.name,
@@ -339,9 +340,8 @@ function UploadDialog({ open, onOpenChange, folderId, onDone, storageReady }: { 
         if (error || !row) throw new Error(error?.message ?? "Could not create media record");
         mediaId = row.id;
         if (probe.thumbnail) {
-          const path = `${row.id}.jpg`;
-          const up = await supabase.storage.from("media-thumbnails").upload(path, probe.thumbnail, { contentType: "image/jpeg", upsert: true });
-          if (!up.error) await supabase.from("media_assets").update({ thumbnail_url: `/api/public/thumbnails/${path}` }).eq("id", row.id);
+          const thumb = await uploadPicture(probe.thumbnail, "thumbnails").catch(() => null);
+          if (thumb) await db.from("media_assets").update({ thumbnail_url: thumb }).eq("id", row.id);
         }
       }
       setResumable(item.file, mediaId);
@@ -439,11 +439,10 @@ function LinkImport({ category, folderId, onDone }: { category: MediaCategory; f
         if (probe.duration != null) update.duration_seconds = probe.duration;
         if (probe.width) { update.width = probe.width; update.height = probe.height; }
         if (probe.thumbnail) {
-          const path = `${res.id}.jpg`;
-          const up = await supabase.storage.from("media-thumbnails").upload(path, probe.thumbnail, { contentType: "image/jpeg", upsert: true });
-          if (!up.error) update.thumbnail_url = `/api/public/thumbnails/${path}`;
+          const thumb = await uploadPicture(probe.thumbnail, "thumbnails").catch(() => null);
+          if (thumb) update.thumbnail_url = thumb;
         }
-        if (Object.keys(update).length) await supabase.from("media_assets").update(update).eq("id", res.id);
+        if (Object.keys(update).length) await db.from("media_assets").update(update).eq("id", res.id);
       }
       patch(id, { state: "done" });
       onDone();

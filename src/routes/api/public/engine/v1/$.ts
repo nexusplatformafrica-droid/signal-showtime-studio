@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import type { TablesInsert } from "@/integrations/supabase/types";
+import type { TablesInsert } from "@/lib/db-types";
 
 /**
  * MOVIE MAX Playout Engine API (v1).
