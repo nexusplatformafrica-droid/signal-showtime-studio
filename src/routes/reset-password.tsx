@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { authErrorMessage, getFirebase } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Wordmark } from "@/components/brand/Wordmark";
 
@@ -22,27 +22,28 @@ export const Route = createFileRoute("/reset-password")({
 
 function ResetPassword() {
   const navigate = useNavigate();
-  const [ready, setReady] = useState(false);
+  const [code, setCode] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const ready = !!code;
   useEffect(() => {
-    if (window.location.hash.includes("type=recovery")) setReady(true);
-    const { data } = supabase.auth.onAuthStateChange((e) => {
-      if (e === "PASSWORD_RECOVERY") setReady(true);
-    });
-    return () => data.subscription.unsubscribe();
+    // Firebase reset links carry ?mode=resetPassword&oobCode=…
+    setCode(new URLSearchParams(window.location.search).get("oobCode"));
   }, []);
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!code) return;
     setBusy(true);
-    const { error } = await supabase.auth.updateUser({ password });
-    setBusy(false);
-    if (error) {
-      toast.error(error.message);
-      return;
+    try {
+      const { auth, authMod } = await getFirebase();
+      await authMod.confirmPasswordReset(auth, code, password);
+      toast.success("Password updated — sign in with your new password");
+      navigate({ to: "/auth" });
+    } catch (err) {
+      toast.error(authErrorMessage(err));
+    } finally {
+      setBusy(false);
     }
-    toast.success("Password updated");
-    navigate({ to: "/admin" });
   }
   return (
     <div className="theme-public public-bg relative isolate grid min-h-screen place-items-center px-4 text-foreground">

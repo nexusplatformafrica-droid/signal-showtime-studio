@@ -10,7 +10,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { watchAuth } from "@/lib/firebase";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -129,12 +129,19 @@ function RootComponent() {
   const router = useRouter();
 
   useEffect(() => {
-    const { data } = supabase.auth.onAuthStateChange((event) => {
-      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+    // Re-check pages when someone signs in or out (Firebase reports the current person first; skip that).
+    let last: string | null | undefined;
+    return watchAuth((u) => {
+      const id = u?.id ?? null;
+      if (last === undefined) {
+        last = id;
+        return;
+      }
+      if (id === last) return;
+      last = id;
       router.invalidate();
-      if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
+      if (id) queryClient.invalidateQueries();
     });
-    return () => data.subscription.unsubscribe();
   }, [router, queryClient]);
 
   return (
