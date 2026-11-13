@@ -1,11 +1,11 @@
 import { createContext, useContext } from "react";
-import type { User } from "@supabase/supabase-js";
+import type { AppUser } from "@/lib/firebase";
 import type { AppRole, Capability } from "@/lib/permissions";
 import { can } from "@/lib/permissions";
 import type { Channel } from "@/hooks/use-station";
 
 export interface StationContextValue {
-  user: User;
+  user: AppUser;
   roles: AppRole[];
   channel: Channel;
   can: (cap: Capability) => boolean;

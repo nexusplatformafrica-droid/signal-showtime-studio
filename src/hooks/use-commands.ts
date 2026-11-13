@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-import type { Database, Json } from "@/integrations/supabase/types";
+import { db } from "@/lib/db";
+import type { Database, Json } from "@/lib/db-types";
 import { useStation } from "@/components/admin/station-context";
 
 export type CommandType = Database["public"]["Enums"]["command_type"];
@@ -26,8 +26,8 @@ export function useIssueCommand() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ command, payload = {} }: { command: CommandType; payload?: Record<string, Json> }) => {
-      const { error } = await supabase.from("broadcast_commands").insert({ channel_id: channel.id, command, payload, issued_by: user.id });
-      if (error) throw new Error(error.message.includes("row-level security") ? "Your role is not allowed to issue this command." : error.message);
+      const { error } = await db.from("broadcast_commands").insert({ channel_id: channel.id, command, payload, issued_by: user.id });
+      if (error) throw new Error(error.code === "permission-denied" ? "Your role is not allowed to issue this command." : error.message);
       return command;
     },
     onSuccess: (command) => {
