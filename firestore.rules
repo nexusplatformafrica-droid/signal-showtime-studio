@@ -1,0 +1,169 @@
+rules_version = '2';
+
+// MOVIE MAX — Firebase security rules.
+// Paste this whole file into Firebase console → Firestore Database → Rules → Publish.
+// The only Super Admin is mainplatform.nexus@gmail.com (with a verified email). Only they can give roles.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isOwner() {
+      return signedIn()
+        && request.auth.token.email == 'mainplatform.nexus@gmail.com'
+        && request.auth.token.email_verified == true;
+    }
+    function roleDoc() { return /databases/$(database)/documents/user_roles/$(request.auth.uid); }
+    // Super Admin can do everything; everyone else needs one of the listed roles.
+    function hasAny(list) {
+      return isOwner() || (signedIn() && exists(roleDoc()) && get(roleDoc()).data.roles.hasAny(list));
+    }
+    function isStaff() {
+      return hasAny(['station_manager', 'broadcast_operator', 'media_manager', 'graphics_designer', 'advertising_manager', 'analyst']);
+    }
+    function staffOrEngine() {
+      return hasAny(['station_manager', 'broadcast_operator', 'media_manager', 'graphics_designer', 'advertising_manager', 'analyst', 'playout_engine']);
+    }
+    function onlyChanges(fields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
+    }
+
+    // ---------------------------------------------------------------- station
+    match /channels/{id} {
+      allow read: if true;
+      allow create, delete: if isOwner();
+      allow update: if hasAny(['station_manager']);
+    }
+
+    match /stream_destinations/{id} {
+      allow read: if hasAny(['station_manager', 'broadcast_operator', 'playout_engine']);
+      allow write: if hasAny(['station_manager']);
+    }
+
+    match /stream_health_checks/{id} {
+      allow read: if isStaff();
+      allow create: if hasAny(['station_manager', 'broadcast_operator']);
+      allow delete: if isOwner();
+    }
+
+    // ---------------------------------------------------------------- broadcast (engine)
+    match /broadcast_status/{channelId} {
+      allow read: if true;
+      allow write: if hasAny(['playout_engine']);
+    }
+
+    match /broadcast_events/{id} {
+      allow read: if staffOrEngine();
+      allow create: if hasAny(['playout_engine']);
+      allow delete: if isOwner();
+    }
+
+    match /broadcast_commands/{id} {
+      allow read: if staffOrEngine();
+      allow create: if hasAny(['station_manager', 'broadcast_operator'])
+        && request.resource.data.issued_by == request.auth.uid
+        && request.resource.data.status == 'queued'
+        && (request.resource.data.command != 'emergency_takeover' || hasAny(['station_manager']));
+      allow update: if hasAny(['playout_engine']);
+      allow delete: if isOwner();
+    }
+
+    match /live_inputs/{id} {
+      allow read: if hasAny(['station_manager', 'broadcast_operator', 'playout_engine']);
+      allow create, delete: if hasAny(['station_manager', 'broadcast_operator']);
+      allow update: if hasAny(['station_manager', 'broadcast_operator'])
+        || (hasAny(['playout_engine']) && onlyChanges(['connected', 'bitrate_kbps', 'resolution', 'fps', 'audio_ok', 'last_seen_at', 'updated_at']));
+    }
+
+    match /engine_tokens/{uid} {
+      allow get: if isOwner() || (signedIn() && request.auth.uid == uid);
+      allow list: if isOwner();
+      allow create, delete: if isOwner();
+      allow update: if isOwner() || (signedIn() && request.auth.uid == uid && onlyChanges(['last_used_at']));
+    }
+
+    // ---------------------------------------------------------------- media & programming
+    // Single files can be read by id (the website plays scheduled files); browsing the library needs a role.
+    match /media_assets/{id} {
+      allow get: if true;
+      allow list: if staffOrEngine();
+      allow create, update: if hasAny(['station_manager', 'media_manager', 'advertising_manager']);
+      allow delete: if hasAny(['station_manager', 'media_manager']);
+    }
+
+    match /media_folders/{id} {
+      allow read: if isStaff();
+      allow write: if hasAny(['station_manager', 'media_manager']);
+    }
+
+    match /playlists/{id} {
+      allow get: if true;
+      allow list: if staffOrEngine();
+      allow write: if hasAny(['station_manager', 'media_manager', 'advertising_manager']);
+    }
+
+    match /playlist_items/{id} {
+      allow read: if true;
+      allow write: if hasAny(['station_manager', 'media_manager', 'advertising_manager']);
+    }
+
+    // Published programmes are public (website guide); drafts are staff-only.
+    match /schedule_entries/{id} {
+      allow read: if resource.data.status == 'published' || staffOrEngine();
+      allow write: if hasAny(['station_manager', 'advertising_manager']);
+    }
+
+    match /recurring_schedules/{id} {
+      allow read: if isStaff();
+      allow write: if hasAny(['station_manager', 'advertising_manager']);
+    }
+
+    // Only the published state of a graphic is public; drafts stay with the team.
+    match /graphics_overlays/{id} {
+      allow read: if resource.data.published_enabled == true || staffOrEngine();
+      allow write: if hasAny(['station_manager', 'graphics_designer']);
+    }
+
+    // ---------------------------------------------------------------- people
+    match /user_roles/{uid} {
+      allow get: if isOwner() || (signedIn() && request.auth.uid == uid);
+      allow list: if isOwner();
+      allow create, update: if isOwner()
+        && request.resource.data.roles is list
+        && !request.resource.data.roles.hasAny(['super_admin']);
+      allow delete: if isOwner();
+    }
+
+    match /profiles/{uid} {
+      allow read: if (signedIn() && request.auth.uid == uid) || hasAny(['station_manager']);
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.email == request.auth.token.email;
+      allow delete: if isOwner();
+    }
+
+    match /audit_logs/{id} {
+      allow read: if hasAny(['station_manager']);
+      allow create: if staffOrEngine() && request.resource.data.actor_id == request.auth.uid;
+      allow delete: if isOwner();
+    }
+
+    // ---------------------------------------------------------------- viewers (public website heartbeat)
+    match /viewer_sessions/{id} {
+      allow get: if true;
+      allow list: if isStaff();
+      allow create: if request.resource.data.keys().hasOnly(['channel_id', 'device', 'platform', 'country', 'user_id', 'started_at', 'last_seen_at', 'watch_seconds'])
+        && request.resource.data.watch_seconds is int
+        && request.resource.data.watch_seconds >= 0 && request.resource.data.watch_seconds <= 120
+        && exists(/databases/$(database)/documents/channels/$(request.resource.data.channel_id));
+      allow update: if onlyChanges(['last_seen_at', 'watch_seconds'])
+        && request.resource.data.watch_seconds is int
+        && request.resource.data.watch_seconds >= resource.data.watch_seconds
+        && request.resource.data.watch_seconds <= resource.data.watch_seconds + 120;
+    }
+
+    // Everything else is closed.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
