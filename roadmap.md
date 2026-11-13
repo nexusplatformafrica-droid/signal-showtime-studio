@@ -7,7 +7,8 @@
 - [x] Playout engine API + contract (docs/PLAYOUT_ENGINE.md)
 
 ## Open
-- [ ] Connect Cloudflare R2 (needs R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET from the user)
+- [x] Connect Cloudflare R2 through the user's upload Worker
+- [ ] Switch the database to Firebase? (waiting on the user's decision)
 - [x] Add media by pasting an R2 link (public or connected-bucket)
 - [x] Wowza connected as streaming provider (destination + secure relay link saved)
 - [x] Downloadable playout engine (public/engine/movie-max-engine.mjs) + setup guide in Settings → Playout engine
