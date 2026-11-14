@@ -82,6 +82,14 @@
   --color-emerald-foreground: var(--emerald-foreground);
   --color-glass: var(--glass);
   --color-cream: var(--cream);
+  --color-neon-pink: var(--neon-pink);
+  --color-neon-purple: var(--neon-purple);
+  --color-neon-blue: var(--neon-blue);
+  --color-neon-cyan: var(--neon-cyan);
+  --color-neon-green: var(--neon-green);
+  --color-neon-gold: var(--neon-gold);
+  --color-neon-orange: var(--neon-orange);
+  --color-neon-ink: var(--neon-ink);
 }
 
 :root {
@@ -152,54 +160,72 @@
   --gradient-public-hero: linear-gradient(90deg, oklch(0.09 0.004 30 / 96%) 0%, oklch(0.09 0.004 30 / 70%) 45%, transparent 100%);
 }
 
-/* Public viewer-facing website: light "glassy gradients, organic forms" look —
-   warm white, frosted cards, orange sun gradient and deep emerald. */
+/* Public viewer-facing website (MOVIE MAX TV): dark neon look — near-black page,
+   glowing gradient outlines, pink / blue / gold pills. */
 .theme-public {
-  color-scheme: light;
-  --background: oklch(0.962 0.009 75);
-  --foreground: oklch(0.21 0.012 60);
-  --panel: oklch(0.99 0.004 75);
-  --panel-raised: oklch(1 0 0);
-  --inset: oklch(0.935 0.011 72);
-  --card: oklch(0.995 0.003 75);
+  color-scheme: dark;
+  --background: oklch(0.165 0.006 264);
+  --foreground: oklch(0.97 0 0);
+  --panel: oklch(0.2 0.008 264);
+  --panel-raised: oklch(0.25 0.01 264);
+  --inset: oklch(0.13 0.006 264);
+  --card: var(--panel);
   --card-foreground: var(--foreground);
-  --popover: oklch(0.995 0.003 75);
+  --popover: oklch(0.21 0.008 264);
   --popover-foreground: var(--foreground);
-  --primary: oklch(0.43 0.09 165);
-  --primary-foreground: oklch(0.99 0.005 160);
-  --secondary: oklch(0.945 0.01 72);
+  --primary: oklch(0.63 0.28 328);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.24 0.01 264);
   --secondary-foreground: var(--foreground);
-  --muted: oklch(0.94 0.01 72);
-  --muted-foreground: oklch(0.5 0.016 60);
-  --accent: oklch(0.925 0.016 70);
+  --muted: oklch(0.23 0.008 264);
+  --muted-foreground: oklch(0.72 0.012 264);
+  --accent: oklch(0.27 0.012 264);
   --accent-foreground: var(--foreground);
-  --border: oklch(0.895 0.012 70);
-  --input: oklch(0.87 0.012 70);
-  --ring: oklch(0.55 0.11 165);
-  --brand: oklch(0.43 0.09 165);
-  --brand-foreground: oklch(0.99 0.005 160);
-  --gold: oklch(0.66 0.17 50);
+  --border: oklch(0.32 0.012 264);
+  --input: oklch(0.34 0.012 264);
+  --ring: oklch(0.6 0.25 295);
+  --brand: oklch(0.63 0.28 328);
+  --brand-foreground: oklch(0.99 0 0);
+  --gold: oklch(0.86 0.12 82);
 
-  --sun: oklch(0.8 0.13 62);
-  --sun-deep: oklch(0.69 0.18 46);
-  --sun-foreground: oklch(0.22 0.04 50);
-  --emerald: oklch(0.43 0.09 165);
-  --emerald-glow: oklch(0.7 0.14 165);
-  --emerald-foreground: oklch(0.99 0.005 160);
-  --glass: oklch(1 0 0 / 0.62);
-  --cream: oklch(0.96 0.03 80);
+  --neon-pink: oklch(0.63 0.28 328);
+  --neon-purple: oklch(0.6 0.25 295);
+  --neon-blue: oklch(0.6 0.2 258);
+  --neon-cyan: oklch(0.83 0.14 205);
+  --neon-green: oklch(0.8 0.2 145);
+  --neon-lime: oklch(0.88 0.2 125);
+  --neon-gold: oklch(0.88 0.11 85);
+  --neon-orange: oklch(0.72 0.19 45);
+  --neon-ink: oklch(0.2 0.02 264);
 
-  --gradient-sun: linear-gradient(150deg, oklch(0.95 0.04 75) 0%, oklch(0.83 0.12 62) 45%, oklch(0.7 0.18 47) 100%);
-  --gradient-emerald: linear-gradient(160deg, oklch(0.47 0.09 165) 0%, oklch(0.32 0.075 167) 60%, oklch(0.22 0.05 170) 100%);
-  --gradient-page: radial-gradient(60rem 40rem at 105% -10%, oklch(0.99 0.03 90 / 0.95), transparent 60%),
-    radial-gradient(45rem 35rem at -10% 55%, oklch(0.86 0.1 60 / 0.45), transparent 65%),
-    linear-gradient(180deg, oklch(0.955 0.012 75), oklch(0.965 0.006 75) 40%, oklch(0.95 0.012 72));
-  --shadow-soft: 0 40px 80px -40px oklch(0.45 0.06 60 / 0.4), 0 2px 8px oklch(0.4 0.03 60 / 0.06);
-  --shadow-float: 0 18px 40px -18px oklch(0.45 0.06 60 / 0.45);
-  font-family: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --gradient-ring: linear-gradient(90deg, var(--neon-green), var(--neon-purple) 45%, var(--neon-cyan));
+  --gradient-hot: linear-gradient(135deg, var(--neon-pink), var(--neon-purple) 50%, var(--neon-cyan));
+  --gradient-search: linear-gradient(90deg, var(--neon-lime), var(--neon-cyan));
+  --gradient-logo: linear-gradient(90deg, oklch(0.68 0.19 255), oklch(0.66 0.25 300));
+  --gradient-gold: linear-gradient(180deg, oklch(0.95 0.07 92), oklch(0.85 0.12 78));
+  --gradient-badge: linear-gradient(90deg, var(--neon-orange), var(--neon-pink));
+  --gradient-badge-cool: linear-gradient(90deg, var(--neon-blue), var(--neon-cyan));
+  --gradient-card-scrim: linear-gradient(180deg, transparent 35%, oklch(0.1 0.006 264 / 0.92) 100%);
+
+  /* Older public token names, remapped to the neon look. */
+  --sun: var(--neon-gold);
+  --sun-deep: oklch(0.8 0.14 70);
+  --sun-foreground: var(--neon-ink);
+  --emerald: var(--neon-blue);
+  --emerald-glow: var(--neon-cyan);
+  --emerald-foreground: oklch(0.99 0 0);
+  --glass: oklch(0.2 0.008 264 / 0.88);
+  --glass-border: oklch(0.32 0.012 264);
+  --cream: oklch(0.25 0.01 264);
+  --gradient-sun: var(--gradient-gold);
+  --gradient-emerald: linear-gradient(160deg, var(--neon-blue), var(--neon-purple));
+  --gradient-page: radial-gradient(50rem 30rem at 50% -12rem, oklch(0.6 0.25 295 / 0.12), transparent 70%), var(--background);
+  --shadow-soft: 0 24px 60px -30px oklch(0 0 0 / 0.85);
+  --shadow-float: 0 12px 30px -14px oklch(0 0 0 / 0.75);
+  font-family: "Noto Sans", ui-sans-serif, system-ui, sans-serif;
 }
 
-/* Video screens inside the light site keep the dark broadcast look. */
+/* Video screens inside the public site keep the broadcast look. */
 .theme-screen {
   color-scheme: dark;
   --background: oklch(0.155 0.006 250);
@@ -338,7 +364,7 @@
   }
   .glass {
     background: var(--glass);
-    border: 1px solid oklch(1 0 0 / 0.7);
+    border: 1px solid var(--glass-border, oklch(1 0 0 / 0.7));
     box-shadow: var(--shadow-soft);
     backdrop-filter: blur(22px) saturate(1.4);
     -webkit-backdrop-filter: blur(22px) saturate(1.4);
@@ -386,6 +412,55 @@
     background: radial-gradient(circle at 35% 30%, oklch(0.88 0.11 60), oklch(0.72 0.18 45));
     box-shadow: 0 20px 40px -18px oklch(0.6 0.17 45 / 0.6);
   }
+  /* ---- Public neon kit ---- */
+  /* Gradient outline around a filled shape (pill bars, search, rail). */
+  .neon-ring {
+    border: 1.5px solid transparent;
+    background:
+      linear-gradient(var(--ring-fill, var(--background)), var(--ring-fill, var(--background))) padding-box,
+      var(--ring-gradient, var(--gradient-ring)) border-box;
+  }
+  /* Gradient frame around a picture or player: wrap the media in a rounded child. */
+  .neon-frame {
+    padding: 2px;
+    background: var(--frame, var(--gradient-hot));
+  }
+  .neon-glow {
+    box-shadow: 0 0 22px -6px color-mix(in oklab, var(--glow, var(--neon-purple)) 70%, transparent);
+  }
+  .text-logo-gradient {
+    background: var(--gradient-logo);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .pill-gold {
+    background: var(--gradient-gold);
+    color: var(--neon-ink);
+  }
+  .badge-hot {
+    background: var(--gradient-badge);
+    color: oklch(0.99 0 0);
+  }
+  .badge-cool {
+    background: var(--gradient-badge-cool);
+    color: oklch(0.99 0 0);
+  }
+  .card-scrim {
+    background: var(--gradient-card-scrim);
+  }
+  .bg-hot { background: var(--gradient-hot); }
+  /* Category tiles: one tone per tile (outline + fill). */
+  .tile { --frame: var(--tile-a); background: var(--frame); padding: 2px; }
+  .tile > .tile-fill { background: linear-gradient(120deg, color-mix(in oklab, var(--tile-a) 78%, var(--background)), color-mix(in oklab, var(--tile-b) 45%, var(--background))); }
+  .tile-0 { --tile-a: var(--neon-orange); --tile-b: var(--neon-pink); }
+  .tile-1 { --tile-a: var(--neon-cyan); --tile-b: var(--neon-green); }
+  .tile-2 { --tile-a: var(--neon-purple); --tile-b: var(--neon-pink); }
+  .tile-3 { --tile-a: var(--neon-blue); --tile-b: var(--neon-cyan); }
+  .tile-4 { --tile-a: var(--neon-green); --tile-b: var(--neon-cyan); }
+  .tile-5 { --tile-a: var(--neon-pink); --tile-b: var(--neon-purple); }
+  .no-scrollbar { scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
   textarea.field {
     height: auto;
     padding: 0.375rem 0.5rem;

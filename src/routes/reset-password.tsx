@@ -8,10 +8,10 @@ import { Wordmark } from "@/components/brand/Wordmark";
 export const Route = createFileRoute("/reset-password")({
   head: () => ({
     meta: [
-      { title: "Set a new password — MOVIE MAX" },
-      { name: "description", content: "Choose a new password for your MOVIE MAX staff account." },
-      { property: "og:title", content: "Set a new password — MOVIE MAX" },
-      { property: "og:description", content: "Choose a new password for your MOVIE MAX staff account." },
+      { title: "Set a new password — MOVIE MAX TV" },
+      { name: "description", content: "Choose a new password for your MOVIE MAX TV staff account." },
+      { property: "og:title", content: "Set a new password — MOVIE MAX TV" },
+      { property: "og:description", content: "Choose a new password for your MOVIE MAX TV staff account." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex" },

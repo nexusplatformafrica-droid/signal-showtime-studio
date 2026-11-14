@@ -81,11 +81,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "MOVIE MAX — Live TV" },
-      { name: "description", content: "MOVIE MAX — premium movies, series and entertainment, live 24 hours a day." },
-      { name: "author", content: "MOVIE MAX" },
+      { title: "MOVIE MAX TV — Live TV" },
+      { name: "description", content: "MOVIE MAX TV — premium movies, series and entertainment, live 24 hours a day." },
+      { name: "author", content: "MOVIE MAX TV" },
       { name: "theme-color", content: "#141518" },
-      { property: "og:title", content: "MOVIE MAX — Live TV" },
+      { property: "og:title", content: "MOVIE MAX TV — Live TV" },
       { property: "og:description", content: "Premium movies, series and entertainment, live 24 hours a day." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -95,7 +95,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&family=Sora:wght@400;500;600;700&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&family=Noto+Sans:wght@400;500;600;700;800;900&family=Sora:wght@400;500;600;700&display=swap",
       },
       {
         rel: "stylesheet",
