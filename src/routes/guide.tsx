@@ -33,7 +33,6 @@ export const Route = createFileRoute("/guide")({
   component: Guide,
 });
 
-const FILTERS: MediaCategory[] = ["movie", "series", "news", "documentary", "music_video", "other"];
 const PLURAL: Partial<Record<MediaCategory, string>> = { movie: "Movies", series: "Series", episode: "Episodes", music_video: "Music videos", documentary: "Documentaries", other: "More shows" };
 
 function Guide() {
@@ -79,13 +78,11 @@ function Guide() {
           <SearchPill key={q ?? ""} initial={q ?? ""} className="flex w-full sm:w-80" />
         </div>
 
-        <div className="no-scrollbar mt-5 flex gap-2 overflow-x-auto pb-1">
-          <Link to="/guide" search={{}} className={cn("inline-flex h-8 shrink-0 items-center rounded-full px-3.5 text-[13px] font-extrabold uppercase", !filtering ? "bg-neon-pink text-primary-foreground" : "bg-panel-raised text-foreground/80 hover:text-foreground")}>All</Link>
-          {FILTERS.map((c) => (
-            <Link key={c} to="/guide" search={{ cat: c }} className={cn("inline-flex h-8 shrink-0 items-center rounded-full px-3.5 text-[13px] font-extrabold uppercase", cat === c ? "bg-neon-pink text-primary-foreground" : "bg-panel-raised text-foreground/80 hover:text-foreground")}>{PLURAL[c] ?? CATEGORY_LABELS[c]}</Link>
-          ))}
-          {filtering && <Link to="/guide" search={{}} className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full border border-border px-3 text-[13px] font-semibold text-muted-foreground hover:text-foreground"><X className="size-3.5" />Clear</Link>}
-        </div>
+        {filtering && (
+          <div className="mt-5 flex">
+            <Link to="/guide" search={{}} className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full border border-border px-3 text-[13px] font-semibold text-muted-foreground hover:text-foreground"><X className="size-3.5" />Clear</Link>
+          </div>
+        )}
 
         {!filtering && (
           <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto pb-1">
