@@ -1,3 +1,4 @@
+import { trueDate } from "@/lib/clock";
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -128,7 +129,7 @@ function MediaLibrary() {
             <select className="field h-7 w-40" disabled={!canEdit} defaultValue="" onChange={(e) => { if (e.target.value) bulkUpdate.mutate({ folder_id: e.target.value === "none" ? null : e.target.value }); e.target.value = ""; }}>
               <option value="">Move to folder…</option><option value="none">No folder</option>{folders.data?.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
             </select>
-            <Button size="xs" variant="panel" disabled={!canEdit} onClick={() => bulkUpdate.mutate({ status: "archived", archived_at: new Date().toISOString() })}><Archive />Archive</Button>
+            <Button size="xs" variant="panel" disabled={!canEdit} onClick={() => bulkUpdate.mutate({ status: "archived", archived_at: trueDate().toISOString() })}><Archive />Archive</Button>
             <ConfirmButton size="xs" variant="panel" disabled={!can("settings") && !canEdit} destructive title={`Delete ${selected.size} assets?`} description="Files are removed from storage and any schedule slots using them will show missing media." confirmLabel="Delete" onConfirm={async () => {
               try { const r = await del({ data: { ids: [...selected] } }); toast.success(`Deleted ${r.deleted} assets`); setSelected(new Set()); refresh(); } catch (e) { toast.error(e instanceof Error ? e.message : "Delete failed"); }
             }}><Trash2 />Delete</ConfirmButton>
@@ -271,7 +272,7 @@ function MediaEditor({ media, onClose, folders, canEdit, onChanged, storageReady
               <Button size="sm" variant="brand" disabled={!canEdit} onClick={save}>Save</Button>
               <input ref={replaceInput} type="file" accept="video/*,.mkv,.mxf,.ts" hidden onChange={(e) => e.target.files?.[0] && replace(e.target.files[0])} />
               <Button size="sm" variant="panel" disabled={!canEdit || !storageReady || replaceProgress != null || !!media.source_url} onClick={() => replaceInput.current?.click()}><RefreshCcw />Replace file</Button>
-              <Button size="sm" variant="panel" disabled={!canEdit} onClick={async () => { await db.from("media_assets").update({ status: media.status === "archived" ? "ready" : "archived", archived_at: media.status === "archived" ? null : new Date().toISOString() }).eq("id", media.id); onChanged(); onClose(); }}>
+              <Button size="sm" variant="panel" disabled={!canEdit} onClick={async () => { await db.from("media_assets").update({ status: media.status === "archived" ? "ready" : "archived", archived_at: media.status === "archived" ? null : trueDate().toISOString() }).eq("id", media.id); onChanged(); onClose(); }}>
                 <Archive />{media.status === "archived" ? "Restore" : "Archive"}
               </Button>
               <ConfirmButton size="sm" variant="ghost" disabled={!canEdit} destructive title="Delete media?" description={media.source_url ? `"${media.title}" will be removed from the library. The file itself stays in your R2 bucket.` : `"${media.title}" will be removed from storage permanently.`} confirmLabel="Delete" onConfirm={async () => { try { await del({ data: { ids: [media.id] } }); onChanged(); onClose(); } catch (e) { toast.error(e instanceof Error ? e.message : "Delete failed"); } }}>

@@ -1,3 +1,4 @@
+import { trueDate } from "@/lib/clock";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -33,7 +34,7 @@ function SchedulePage() {
   const qc = useQueryClient();
   const canEdit = can("schedule");
   const [view, setView] = useState<View>("week");
-  const [anchor, setAnchor] = useState(() => toZoned(new Date(), tz).date);
+  const [anchor, setAnchor] = useState(() => toZoned(trueDate(), tz).date);
   const [seed, setSeed] = useState<EditorSeed | null>(null);
   const [copyOpen, setCopyOpen] = useState(false);
   const [pendingMove, setPendingMove] = useState<{ entry: ScheduleEntry; starts: Date; ends: Date } | null>(null);
@@ -82,7 +83,7 @@ function SchedulePage() {
 
   async function publish(ids: string[]) {
     if (!ids.length) return;
-    const { error } = await db.from("schedule_entries").update({ status: "published", published_at: new Date().toISOString() }).in("id", ids);
+    const { error } = await db.from("schedule_entries").update({ status: "published", published_at: trueDate().toISOString() }).in("id", ids);
     if (error) {
       toast.error(error.message);
       return;
@@ -123,7 +124,7 @@ function SchedulePage() {
             ))}
           </div>
           <Button size="icon-sm" variant="panel" onClick={() => shift(-1)} aria-label="Previous"><ChevronLeft /></Button>
-          <Button size="xs" variant="panel" onClick={() => setAnchor(toZoned(new Date(), tz).date)}>Today</Button>
+          <Button size="xs" variant="panel" onClick={() => setAnchor(toZoned(trueDate(), tz).date)}>Today</Button>
           <Button size="icon-sm" variant="panel" onClick={() => shift(1)} aria-label="Next"><ChevronRight /></Button>
           <input type="date" className="field h-7 w-36" value={anchor} onChange={(e) => e.target.value && setAnchor(e.target.value)} aria-label="Go to date" />
           <span className="mx-1 h-5 w-px bg-border" />
@@ -133,7 +134,7 @@ function SchedulePage() {
             onConfirm={() => publish(drafts.map((d) => d.id))}>
             <Send />Publish {drafts.length > 0 ? `(${drafts.length})` : ""}
           </ConfirmButton>
-          <Button size="xs" variant="program" disabled={!canEdit} onClick={() => setSeed({ date: anchor, time: "20:00" })}><Plus />New programme</Button>
+          <Button size="xs" variant="program" disabled={!canEdit} onClick={() => setSeed({ date: anchor })}><Plus />New programme</Button>
         </>
       }>
         <div className="flex items-center gap-3 border-t border-border px-4 py-1 text-xs">
@@ -285,7 +286,7 @@ function Timeline({ days, entries, tz, issuesById, canEdit, onCreate, onOpen, on
 
 function MonthView({ days, anchor, entries, tz, issuesById, onPick }: { days: string[]; anchor: string; entries: ScheduleEntry[]; tz: string; issuesById: Map<string, ScheduleIssue[]>; onPick: (d: string) => void }) {
   const month = anchor.slice(0, 7);
-  const today = toZoned(new Date(), tz).date;
+  const today = toZoned(trueDate(), tz).date;
   return (
     <div className="grid grid-cols-7 gap-px bg-border p-px">
       {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => <div key={d} className="label-caps bg-panel px-2 py-1">{d}</div>)}

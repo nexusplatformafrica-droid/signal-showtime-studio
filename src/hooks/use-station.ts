@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { db, watchCollection, watchDoc } from "@/lib/db";
 import { normalize } from "@/lib/db/core";
 import type { Tables } from "@/lib/db-types";
+import { onClockChange, startClockSync, trueNow } from "@/lib/clock";
 
 export const CHANNEL_SLUG = "movie-max";
 
@@ -57,13 +58,15 @@ export function useRealtimeInvalidate(table: string, keys: unknown[][], filter?:
   }, [table, sig]);
 }
 
-/** Ticking clock; null until mounted to keep SSR output stable. */
+/** Ticking real-time clock (online time, not the device clock); null until mounted to keep SSR output stable. */
 export function useNow(intervalMs = 1000) {
   const [now, setNow] = useState<number | null>(null);
   useEffect(() => {
-    setNow(Date.now());
-    const t = setInterval(() => setNow(Date.now()), intervalMs);
-    return () => clearInterval(t);
+    startClockSync();
+    setNow(trueNow());
+    const t = setInterval(() => setNow(trueNow()), intervalMs);
+    const off = onClockChange(() => setNow(trueNow()));
+    return () => { clearInterval(t); off(); };
   }, [intervalMs]);
   return now;
 }

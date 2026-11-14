@@ -1,3 +1,4 @@
+import { trueDate } from "@/lib/clock";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -74,7 +75,7 @@ function GraphicsPage() {
   const unpublished = list.some((o) => JSON.stringify(draft[o.id] ?? {}) !== JSON.stringify(o.published_config ?? null) || (enabled[o.id] ?? o.enabled) !== o.published_enabled);
 
   async function save(publish: boolean) {
-    const ts = new Date().toISOString();
+    const ts = trueDate().toISOString();
     const results = await Promise.all(list.map((o) =>
       db.from("graphics_overlays").update(
         publish
@@ -91,7 +92,7 @@ function GraphicsPage() {
 
   /** Put one graphic on air right now (restarts its timer) without touching the others. */
   async function showNow(o: Overlay) {
-    const ts = new Date().toISOString();
+    const ts = trueDate().toISOString();
     const { error } = await db.from("graphics_overlays").update(showNowPatch(draft[o.id] ?? {}, ts) as unknown as OverlayUpdate).eq("id", o.id);
     if (error) { toast.error(error.message); return; }
     setEnabled((e) => ({ ...e, [o.id]: true }));

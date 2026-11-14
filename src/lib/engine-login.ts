@@ -1,3 +1,4 @@
+import { trueDate } from "@/lib/clock";
 import type { Db } from "@/lib/db/core";
 import { FIREBASE_CONFIG } from "@/lib/firebase-config";
 import { encodeEngineToken } from "@/lib/engine-token";
@@ -46,5 +47,5 @@ export async function createEngineLogin(db: Db, opts: { channelId: string; label
 /** Cuts an engine off at once: its role is removed, so the database refuses it. */
 export async function revokeEngineLogin(db: Db, id: string) {
   await db.from("user_roles").delete().eq("id", id);
-  await db.from("engine_tokens").update({ revoked_at: new Date().toISOString() }).eq("id", id);
+  await db.from("engine_tokens").update({ revoked_at: trueDate().toISOString() }).eq("id", id);
 }

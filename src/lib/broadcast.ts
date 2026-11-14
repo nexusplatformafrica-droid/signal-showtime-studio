@@ -9,6 +9,8 @@ export const HEARTBEAT_STALE_MS = 30_000;
 /** A viewer counts as "watching now" if their player pinged within this window. */
 export const VIEWER_ACTIVE_MS = 60_000;
 
+import { trueNow } from "./clock";
+
 type DateLike = Date | string | number;
 const toDate = (d: DateLike) => (d instanceof Date ? d : new Date(d));
 
@@ -46,8 +48,8 @@ export function tzOffsetMs(tz: string, date: Date): number {
 /** Convert a station-local wall-clock date ("YYYY-MM-DD") + time ("HH:mm") to a UTC instant. */
 export function zonedToUtc(dateStr: string, timeStr: string, tz: string = STATION_TZ): Date {
   const [y, m, d] = parseYmd(dateStr);
-  const [hh = 0, mm = 0] = timeStr.split(":").map(Number);
-  const guess = Date.UTC(y, m - 1, d, hh, mm || 0);
+  const [hh = 0, mm = 0, ss = 0] = timeStr.split(":").map(Number);
+  const guess = Date.UTC(y, m - 1, d, hh, mm || 0, ss || 0);
   const off1 = tzOffsetMs(tz, new Date(guess));
   let t = guess - off1;
   const off2 = tzOffsetMs(tz, new Date(t));
@@ -64,6 +66,8 @@ export function toZoned(date: DateLike, tz: string = STATION_TZ) {
   return {
     date: `${p.year}-${p.month}-${p.day}`,
     time: `${String(hour).padStart(2, "0")}:${p.minute}`,
+    /** "HH:mm:ss" — used where a programme must start on the exact second. */
+    timeSec: `${String(hour).padStart(2, "0")}:${p.minute}:${p.second}`,
     weekday: WEEKDAYS.indexOf(p.weekday),
     minutes: hour * 60 + +p.minute + +p.second / 60,
   };
@@ -135,13 +139,13 @@ export interface EngineStatusLike {
 }
 
 /** The engine is online only when its last heartbeat is fresh. */
-export function isEngineOnline(status: EngineStatusLike | null | undefined, now: number = Date.now()) {
+export function isEngineOnline(status: EngineStatusLike | null | undefined, now: number = trueNow()) {
   if (!status?.last_heartbeat_at) return false;
   return now - new Date(status.last_heartbeat_at).getTime() <= HEARTBEAT_STALE_MS;
 }
 
 /** ON AIR requires the engine itself to report on_air with a fresh heartbeat. Schedule time alone never counts. */
-export function isOnAir(status: EngineStatusLike | null | undefined, now: number = Date.now()) {
+export function isOnAir(status: EngineStatusLike | null | undefined, now: number = trueNow()) {
   return !!status?.on_air && isEngineOnline(status, now);
 }
 
@@ -269,15 +273,43 @@ export function expandRecurrence(rule: RecurrenceRule, tz: string = STATION_TZ) 
   return out;
 }
 
+/**
+ * When a new programme added "after the last programme" starts: the moment the latest
+ * programme still to finish ends, or right now when nothing else is still to come.
+ */
+export function scheduleTail<T extends { id?: string; title?: string; starts_at: string; ends_at: string; status?: string }>(
+  entries: T[],
+  now: number = trueNow(),
+  excludeId?: string,
+): { at: Date; after: T | null } {
+  let after: T | null = null;
+  for (const e of entries) {
+    if (e.status === "cancelled" || (excludeId && e.id === excludeId)) continue;
+    const end = +new Date(e.ends_at);
+    if (end > now && (!after || end > +new Date(after.ends_at))) after = e;
+  }
+  return { at: after ? new Date(after.ends_at) : nextWholeSecond(now), after };
+}
+
+/** Round up to the next whole second (programmes start on whole seconds). */
+export function nextWholeSecond(ms: number) {
+  return new Date(Math.ceil(ms / 1000) * 1000);
+}
+
+/** End time that matches the real length of the video (or playlist), to the second. */
+export function endFromDuration(start: DateLike, durationSeconds: number) {
+  return new Date(toDate(start).getTime() + Math.ceil(Math.max(0, durationSeconds)) * 1000);
+}
+
 /** Find the scheduled current/next programme. Callers must not label `current` as ON AIR unless the engine confirms it. */
-export function findNowNext<T extends { starts_at: string; ends_at: string; status?: string }>(entries: T[], now: number = Date.now()) {
+export function findNowNext<T extends { starts_at: string; ends_at: string; status?: string }>(entries: T[], now: number = trueNow()) {
   const sorted = entries.filter((e) => e.status !== "cancelled").sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at));
   const current = sorted.find((e) => +new Date(e.starts_at) <= now && +new Date(e.ends_at) > now) ?? null;
   const next = sorted.find((e) => +new Date(e.starts_at) > now) ?? null;
   return { current, next };
 }
 
-export function playlistTotals(items: { duration_seconds: number | null }[], startAt: number = Date.now()) {
+export function playlistTotals(items: { duration_seconds: number | null }[], startAt: number = trueNow()) {
   const totalSeconds = items.reduce((acc, i) => acc + (i.duration_seconds ?? 0), 0);
   const unknown = items.filter((i) => i.duration_seconds == null).length;
   return { totalSeconds, unknown, completesAt: new Date(startAt + totalSeconds * 1000) };

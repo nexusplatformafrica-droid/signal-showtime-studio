@@ -1,3 +1,4 @@
+import { trueDate } from "@/lib/clock";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useWebPlayout } from "@/hooks/use-web-playout";
@@ -31,7 +32,7 @@ function Guide() {
   const onAir = now != null && isOnAir(data.status, now);
   const online = now != null && isEngineOnline(data.status, now);
   const { pick } = useWebPlayout(now);
-  const today = toZoned(now ?? new Date(), tz).date;
+  const today = toZoned(now ?? trueDate(), tz).date;
   const [day, setDay] = useState<string | null>(null);
   const selected = day ?? today;
   const days = Array.from({ length: 7 }, (_, i) => addDays(today, i));

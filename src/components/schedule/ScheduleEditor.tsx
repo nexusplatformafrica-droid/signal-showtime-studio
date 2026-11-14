@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { MediaPicker, type PickedMedia } from "@/components/schedule/MediaPicker";
 import { CATEGORIES, CATEGORY_LABELS, type MediaCategory } from "@/lib/labels";
-import { detectScheduleIssues, durationMinutes, expandRecurrence, formatDuration, minutesToTime, toZoned, zonedToUtc, type RecurrenceRule } from "@/lib/broadcast";
+import { detectScheduleIssues, endFromDuration, expandRecurrence, formatDuration, minutesToTime, nextWholeSecond, playlistTotals, scheduleTail, toZoned, zonedToUtc, type RecurrenceRule } from "@/lib/broadcast";
+import { trueDate, trueNow } from "@/lib/clock";
 import { cn } from "@/lib/utils";
 
 export interface EditorSeed {
@@ -21,6 +22,14 @@ export interface EditorSeed {
 }
 
 const WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/** How the start time is chosen: typed in, right now, or straight after the last programme. */
+type StartMode = "manual" | "now" | "after_last";
+const START_MODES: { id: StartMode; label: string }[] = [
+  { id: "after_last", label: "After last programme" },
+  { id: "now", label: "Start now" },
+  { id: "manual", label: "Pick a time" },
+];
 
 export function ScheduleEditor({ seed, onClose }: { seed: EditorSeed | null; onClose: () => void }) {
   const { channel, user, can } = useStation();
@@ -48,6 +57,9 @@ export function ScheduleEditor({ seed, onClose }: { seed: EditorSeed | null; onC
   const [weekdays, setWeekdays] = useState<number[]>([]);
   const [until, setUntil] = useState("");
   const [busy, setBusy] = useState(false);
+  const [startMode, setStartMode] = useState<StartMode>("manual");
+  const [autoEnd, setAutoEnd] = useState(true);
+  const [afterTitle, setAfterTitle] = useState<string | null>(null);
 
   useEffect(() => {
     if (!seed) return;
@@ -56,12 +68,13 @@ export function ScheduleEditor({ seed, onClose }: { seed: EditorSeed | null; onC
       const e = toZoned(entry.ends_at, tz);
       setTitle(entry.title); setDescription(entry.description ?? ""); setCategory(entry.category); setMode(entry.mode);
       setSourceKind(entry.playlist_id ? "playlist" : "media"); setPlaylistId(entry.playlist_id ?? ""); setThumb(entry.thumbnail_url);
-      setDate(s.date); setStart(s.time); setEnd(e.time); setEndDate(e.date); setPriority(entry.priority); setNotes(entry.notes ?? "");
+      setDate(s.date); setStart(s.timeSec); setEnd(e.timeSec); setEndDate(e.date); setStartMode("manual"); setAutoEnd(false); setPriority(entry.priority); setNotes(entry.notes ?? "");
       setCommercial(entry.is_commercial_break); setFreq("none");
       setMedia(null);
       if (entry.media_id) db.from("media_assets").select("id, title, category, duration_seconds, thumbnail_url, status, available, description").eq("id", entry.media_id).maybeSingle().then(({ data }) => setMedia(data ?? null));
     } else {
-      const d = seed.date ?? toZoned(new Date(), tz).date;
+      const d = seed.date ?? toZoned(trueDate(), tz).date;
+      setStartMode(seed.time ? "manual" : "after_last"); setAutoEnd(true); setAfterTitle(null);
       setTitle(""); setDescription(""); setCategory("movie"); setMode("fixed"); setSourceKind("media"); setMedia(null); setPlaylistId(""); setThumb(null);
       setDate(d); setStart(seed.time ?? "20:00");
       const [h = 20, m = 0] = (seed.time ?? "20:00").split(":").map(Number);
@@ -76,15 +89,80 @@ export function ScheduleEditor({ seed, onClose }: { seed: EditorSeed | null; onC
     queryFn: async () => (await db.from("playlists").select("id, name, kind").eq("channel_id", channel.id).order("name")).data ?? [],
   });
 
+  // Real length of what will play: the video's own duration, or the playlist's total.
+  const playlistLength = useQuery({
+    queryKey: ["playlist-length", playlistId],
+    enabled: !!seed && sourceKind === "playlist" && !!playlistId,
+    queryFn: async () => {
+      const { data: items } = await db.from("playlist_items").select("media_id").eq("playlist_id", playlistId);
+      const ids = [...new Set((items ?? []).map((i) => i.media_id))];
+      if (!ids.length) return { totalSeconds: 0, unknown: 0, count: 0 };
+      const { data: rows } = await db.from("media_assets").select("id, duration_seconds").in("id", ids);
+      const dur = new Map((rows ?? []).map((r) => [r.id, r.duration_seconds == null ? null : Number(r.duration_seconds)]));
+      const t = playlistTotals((items ?? []).map((i) => ({ duration_seconds: dur.get(i.media_id) ?? null })));
+      return { totalSeconds: t.totalSeconds, unknown: t.unknown, count: items?.length ?? 0 };
+    },
+  });
+  const lengthSeconds: number | null =
+    sourceKind === "media"
+      ? media?.duration_seconds ? Number(media.duration_seconds) : null
+      : playlistLength.data && playlistLength.data.totalSeconds > 0 && playlistLength.data.unknown === 0 ? playlistLength.data.totalSeconds : null;
+  const useAutoEnd = autoEnd && lengthSeconds != null && lengthSeconds > 0;
+
   const startsAt = date && start ? zonedToUtc(date, start, tz) : null;
   // If end time is earlier than start, it runs past midnight.
   const endsAt = useMemo(() => {
-    if (!startsAt || !end) return null;
+    if (!startsAt) return null;
+    if (useAutoEnd) return endFromDuration(startsAt, lengthSeconds!);
+    if (!end) return null;
     let e = zonedToUtc(endDate || date, end, tz);
     if (e <= startsAt) e = zonedToUtc(addDay(endDate || date), end, tz);
     return e;
-  }, [startsAt, end, endDate, date, tz]);
-  const mins = startsAt && endsAt ? durationMinutes(startsAt, endsAt) : 0;
+  }, [startsAt, useAutoEnd, lengthSeconds, end, endDate, date, tz]);
+  const secs = startsAt && endsAt ? Math.round((endsAt.getTime() - startsAt.getTime()) / 1000) : 0;
+
+  // Keep the End boxes showing the automatic end time.
+  useEffect(() => {
+    if (!useAutoEnd || !endsAt) return;
+    const z = toZoned(endsAt, tz);
+    setEnd(z.timeSec);
+    setEndDate(z.date);
+  }, [useAutoEnd, endsAt, tz]);
+
+  /** Work out the start for "Start now" / "After last programme" from the real (online) time. */
+  async function resolveStart(m: StartMode): Promise<Date | null> {
+    if (m === "manual") return startsAt;
+    if (m === "now") { setAfterTitle(null); return nextWholeSecond(trueNow()); }
+    const now = trueNow();
+    const { data } = await db.from("schedule_entries").select("id, title, starts_at, ends_at, status").eq("channel_id", channel.id).gt("ends_at", new Date(now).toISOString());
+    const tail = scheduleTail(data ?? [], now, entry?.id);
+    setAfterTitle(tail.after?.title ?? null);
+    return tail.at;
+  }
+  function applyStart(at: Date) {
+    const z = toZoned(at, tz);
+    setDate(z.date);
+    setStart(z.timeSec);
+    if (!useAutoEnd) {
+      // Keep the same length when the start moves.
+      const len = secs > 0 ? secs : 3600;
+      const e = toZoned(new Date(at.getTime() + len * 1000), tz);
+      setEnd(e.timeSec);
+      setEndDate(e.date);
+    }
+  }
+  async function chooseStart(m: StartMode) {
+    setStartMode(m);
+    if (m === "manual") return;
+    const at = await resolveStart(m);
+    if (at) applyStart(at);
+  }
+  // Fill in the automatic start as soon as a new programme opens.
+  useEffect(() => {
+    if (!seed || entry || seed.time) return;
+    void chooseStart("after_last");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seed]);
 
   // Conflict preview against what is already in the schedule
   const conflicts = useQuery({
@@ -111,54 +189,44 @@ export function ScheduleEditor({ seed, onClose }: { seed: EditorSeed | null; onC
     setCategory(m.category);
     setThumb(m.thumbnail_url);
     if (m.category === "advertisement") setCommercial(true);
-    if (m.duration_seconds && startsAt) {
-      const e = new Date(startsAt.getTime() + Math.ceil(Number(m.duration_seconds) / 60) * 60_000);
-      const z = toZoned(e, tz);
-      setEnd(z.time);
-      setEndDate(z.date);
-    }
-  }
-
-  async function startAfterPrevious() {
-    if (!startsAt) return;
-    const { data } = await db.from("schedule_entries").select("ends_at").eq("channel_id", channel.id).neq("status", "cancelled").lte("ends_at", new Date(startsAt.getTime() + 6 * 3600_000).toISOString()).lt("starts_at", startsAt.toISOString()).order("ends_at", { ascending: false }).limit(1);
-    const prev = data?.[0];
-    if (!prev) { toast.message("No earlier programme found"); return; }
-    const prevEnd = new Date(prev.ends_at);
-    const z = toZoned(prevEnd, tz);
-    const len = mins || 60;
-    setDate(z.date);
-    setStart(z.time);
-    const e = toZoned(new Date(prevEnd.getTime() + len * 60_000), tz);
-    setEnd(e.time);
-    setEndDate(e.date);
+    if (m.duration_seconds) setAutoEnd(true);
   }
 
   async function save(publish: boolean) {
-    if (!startsAt || !endsAt || mins <= 0) { toast.error("Check the start and end times"); return; }
+    if (!startsAt || !endsAt || secs <= 0) { toast.error("Check the start and end times"); return; }
     if (!title.trim()) { toast.error("Programme title is required"); return; }
     setBusy(true);
     try {
+      // "Start now" / "After last programme" are worked out again at the moment of saving.
+      let s0 = startsAt;
+      let e0 = endsAt;
+      if (startMode !== "manual") {
+        const at = await resolveStart(startMode);
+        if (at) { s0 = at; e0 = useAutoEnd ? endFromDuration(at, lengthSeconds!) : new Date(at.getTime() + secs * 1000); }
+      }
+      const startsIso = s0.toISOString();
+      const endsIso = e0.toISOString();
+      const z0 = toZoned(s0, tz);
       const base = {
         channel_id: channel.id, title: title.trim(), description: description || null, category, mode,
         media_id: sourceKind === "media" ? media?.id ?? null : null,
         playlist_id: sourceKind === "playlist" ? playlistId || null : null,
         thumbnail_url: thumb, priority, notes: notes || null, is_commercial_break: commercial,
         status: publish ? ("published" as const) : entry?.status === "cancelled" ? ("draft" as const) : publish === false && entry ? entry.status : ("draft" as const),
-        published_at: publish ? new Date().toISOString() : entry?.published_at ?? null,
+        published_at: publish ? trueDate().toISOString() : entry?.published_at ?? null,
       };
       if (entry) {
-        const { error } = await db.from("schedule_entries").update({ ...base, starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString() }).eq("id", entry.id);
+        const { error } = await db.from("schedule_entries").update({ ...base, starts_at: startsIso, ends_at: endsIso }).eq("id", entry.id);
         if (error) throw error;
         toast.success(publish ? "Saved and published" : "Saved");
       } else if (freq === "none") {
-        const { error } = await db.from("schedule_entries").insert({ ...base, starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString(), created_by: user.id });
+        const { error } = await db.from("schedule_entries").insert({ ...base, starts_at: startsIso, ends_at: endsIso, created_by: user.id });
         if (error) throw error;
         toast.success(publish ? "Programme scheduled and published" : "Programme saved as draft");
       } else {
         if (!until) throw new Error("Choose an end date for the recurrence");
         if (freq === "weekdays" && weekdays.length === 0) throw new Error("Pick at least one weekday");
-        const rule: RecurrenceRule = { freq, weekdays, startDate: date, endDate: until, startTime: start, durationMinutes: mins };
+        const rule: RecurrenceRule = { freq, weekdays, startDate: z0.date, endDate: until, startTime: z0.timeSec, durationMinutes: secs / 60 };
         const occ = expandRecurrence(rule, tz);
         if (!occ.length) throw new Error("The recurrence produces no programmes");
         const { data: rec, error: re } = await db.from("recurring_schedules").insert({ channel_id: channel.id, rule: rule as unknown as Json, created_by: user.id }).select("id").single();
@@ -236,14 +304,38 @@ export function ScheduleEditor({ seed, onClose }: { seed: EditorSeed | null; onC
               </select>
             </label>
           </div>
-          <div className="grid grid-cols-[1.3fr_1fr_1fr] gap-2">
-            <label className="block space-y-1"><span className="label-caps">Date ({tz.split("/")[1]})</span><input type="date" className="field" value={date} onChange={(e) => { setDate(e.target.value); setEndDate(e.target.value); }} /></label>
-            <label className="block space-y-1"><span className="label-caps">Start</span><input type="time" className="field timecode" value={start} onChange={(e) => setStart(e.target.value)} /></label>
-            <label className="block space-y-1"><span className="label-caps">End</span><input type="time" className="field timecode" value={end} onChange={(e) => { setEnd(e.target.value); setEndDate(date); }} /></label>
+          <div className="space-y-1">
+            <span className="label-caps">Start time</span>
+            <div className="flex gap-1">
+              {START_MODES.map((o) => (
+                <button key={o.id} type="button" onClick={() => void chooseStart(o.id)} className={cn("h-7 flex-1 rounded-sm border text-[11px]", startMode === o.id ? "border-preview bg-preview/15 text-preview" : "border-border bg-inset text-muted-foreground")}>{o.label}</button>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              {startMode === "after_last" && (afterTitle ? <>Starts the moment “{afterTitle}” ends.</> : <>Nothing else is coming up, so it starts right away.</>)}
+              {startMode === "now" && <>Starts right now (real online time). The exact second is taken again when you save.</>}
+              {startMode === "manual" && <>Type the date and start time yourself.</>}
+            </p>
           </div>
+          <div className="grid grid-cols-[1.2fr_1fr_1fr] gap-2">
+            <label className="block space-y-1"><span className="label-caps">Date ({tz.split("/")[1]})</span><input type="date" className="field" value={date} disabled={startMode !== "manual"} onChange={(e) => { setDate(e.target.value); setEndDate(e.target.value); }} /></label>
+            <label className="block space-y-1"><span className="label-caps">Start</span><input type="time" step={1} className="field timecode" value={start} disabled={startMode !== "manual"} onChange={(e) => setStart(e.target.value)} /></label>
+            <label className="block space-y-1"><span className="label-caps">End</span><input type="time" step={1} className="field timecode" value={end} disabled={useAutoEnd} onChange={(e) => { setEnd(e.target.value); setEndDate(date); }} /></label>
+          </div>
+          <label className="flex items-start gap-2 text-xs">
+            <input type="checkbox" className="mt-0.5" checked={autoEnd} onChange={(e) => setAutoEnd(e.target.checked)} />
+            <span>
+              End automatically by the real {sourceKind === "playlist" ? "playlist" : "video"} length
+              {lengthSeconds != null && lengthSeconds > 0 && <span className="timecode text-foreground"> ({formatDuration(lengthSeconds)})</span>}
+              {autoEnd && lengthSeconds == null && (
+                <span className="block text-warn">
+                  {sourceKind === "media" ? (media ? "This video's length isn't known yet — set the end time yourself." : "Choose a video first.") : playlistLength.data?.unknown ? `${playlistLength.data.unknown} item(s) in this playlist have no known length — set the end time yourself.` : "Choose a playlist with videos first."}
+                </span>
+              )}
+            </span>
+          </label>
           <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">Duration <span className="timecode text-foreground">{mins > 0 ? formatDuration(mins * 60) : "—"}</span>{endsAt && startsAt && toZoned(endsAt, tz).date !== toZoned(startsAt, tz).date && " · ends next day"}</span>
-            {mode === "follow_on" && <button type="button" onClick={startAfterPrevious} className="text-info hover:underline">Start when previous ends</button>}
+            <span className="text-muted-foreground">Duration <span className="timecode text-foreground">{secs > 0 ? formatDuration(secs) : "—"}</span>{endsAt && startsAt && toZoned(endsAt, tz).date !== toZoned(startsAt, tz).date && " · ends next day"}</span>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <label className="block space-y-1"><span className="label-caps">Priority (0–100)</span><input type="number" min={0} max={100} className="field" value={priority} onChange={(e) => setPriority(Math.max(0, Math.min(100, +e.target.value)))} /></label>

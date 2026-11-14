@@ -1,3 +1,4 @@
+import { trueDate } from "../clock";
 import type { Database, Json } from "@/lib/db-types";
 import { DOC_KEY, SCHEMA } from "@/lib/db-schema";
 
@@ -41,7 +42,7 @@ type Filter =
   | { op: "fn"; field: string; value: (row: Doc) => boolean };
 
 const uuid = () => crypto.randomUUID();
-const nowIso = () => new Date().toISOString();
+const nowIso = () => trueDate().toISOString();
 
 export function friendlyError(e: unknown): DbError {
   const raw = e instanceof Error ? e.message : String(e);

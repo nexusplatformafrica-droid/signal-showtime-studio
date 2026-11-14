@@ -1,3 +1,4 @@
+import { trueDate, trueNow } from "@/lib/clock";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -66,10 +67,10 @@ function Overview() {
     queryKey: ["overview-stats", channel.id],
     refetchInterval: 30000,
     queryFn: async () => {
-      const todayLocal = toZoned(new Date(), tz).date;
+      const todayLocal = toZoned(trueDate(), tz).date;
       const dayStart = zonedToUtc(todayLocal, "00:00", tz).toISOString();
       const [live, today, media, inputs] = await Promise.all([
-        db.from("viewer_sessions").select("id", { count: "exact", head: true }).eq("channel_id", channel.id).gte("last_seen_at", new Date(Date.now() - VIEWER_ACTIVE_MS).toISOString()),
+        db.from("viewer_sessions").select("id", { count: "exact", head: true }).eq("channel_id", channel.id).gte("last_seen_at", new Date(trueNow() - VIEWER_ACTIVE_MS).toISOString()),
         db.from("viewer_sessions").select("id", { count: "exact", head: true }).eq("channel_id", channel.id).gte("last_seen_at", dayStart),
         db.from("media_assets").select("file_size").eq("channel_id", channel.id).limit(5000),
         can("live") ? db.from("live_inputs").select("id, name, connected").eq("channel_id", channel.id) : Promise.resolve({ data: [] as { id: string; name: string; connected: boolean }[] }),

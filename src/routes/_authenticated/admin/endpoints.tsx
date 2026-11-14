@@ -1,3 +1,4 @@
+import { trueDate } from "@/lib/clock";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -70,7 +71,7 @@ function EndpointsPage() {
       toast.error("The server URL must start with rtmp://, rtmps:// or srt://");
       return;
     }
-    const row = { channel_id: channel.id, provider: d.provider.trim() || "HostHerb", rtmp_url: rtmp || null, stream_name: d.stream_name.trim() || null, username: d.username.trim() || null, updated_at: new Date().toISOString() };
+    const row = { channel_id: channel.id, provider: d.provider.trim() || "HostHerb", rtmp_url: rtmp || null, stream_name: d.stream_name.trim() || null, username: d.username.trim() || null, updated_at: trueDate().toISOString() };
     const { error } = await db.from("stream_destinations").upsert(row, { onConflict: "channel_id" });
     if (error) toast.error(error.message);
     else {

@@ -1,3 +1,4 @@
+import { trueNow } from "@/lib/clock";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -67,7 +68,7 @@ export function AdminShell({ children, onSignOut }: { children: React.ReactNode;
     queryKey: ["viewers-live", channel.id],
     refetchInterval: 15000,
     queryFn: async () => {
-      const { count } = await db.from("viewer_sessions").select("id", { count: "exact", head: true }).eq("channel_id", channel.id).gte("last_seen_at", new Date(Date.now() - VIEWER_ACTIVE_MS).toISOString());
+      const { count } = await db.from("viewer_sessions").select("id", { count: "exact", head: true }).eq("channel_id", channel.id).gte("last_seen_at", new Date(trueNow() - VIEWER_ACTIVE_MS).toISOString());
       return count ?? 0;
     },
   });

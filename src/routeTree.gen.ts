@@ -26,6 +26,7 @@ import { Route as AuthenticatedAdminMediaRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAdminPlaylistsRouteImport } from './routes/_authenticated/admin/playlists'
 import { Route as AuthenticatedAdminScheduleRouteImport } from './routes/_authenticated/admin/schedule'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin/settings'
+import { Route as ApiPublicTimeRouteImport } from './routes/api/public/time'
 import { Route as ApiPublicHlsSplatRouteImport } from './routes/api/public/hls/$'
 import { Route as ApiPublicEngineV1SplatRouteImport } from './routes/api/public/engine/v1/$'
 
@@ -119,6 +120,11 @@ const AuthenticatedAdminSettingsRoute =
     path: '/settings',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
+const ApiPublicTimeRoute = ApiPublicTimeRouteImport.update({
+  id: '/api/public/time',
+  path: '/api/public/time',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHlsSplatRoute = ApiPublicHlsSplatRouteImport.update({
   id: '/api/public/hls/$',
   path: '/api/public/hls/$',
@@ -146,6 +152,7 @@ export interface FileRoutesByFullPath {
   '/admin/playlists': typeof AuthenticatedAdminPlaylistsRoute
   '/admin/schedule': typeof AuthenticatedAdminScheduleRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
+  '/api/public/time': typeof ApiPublicTimeRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/hls/$': typeof ApiPublicHlsSplatRoute
   '/api/public/engine/v1/$': typeof ApiPublicEngineV1SplatRoute
@@ -165,6 +172,7 @@ export interface FileRoutesByTo {
   '/admin/playlists': typeof AuthenticatedAdminPlaylistsRoute
   '/admin/schedule': typeof AuthenticatedAdminScheduleRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
+  '/api/public/time': typeof ApiPublicTimeRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/api/public/hls/$': typeof ApiPublicHlsSplatRoute
   '/api/public/engine/v1/$': typeof ApiPublicEngineV1SplatRoute
@@ -187,6 +195,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/playlists': typeof AuthenticatedAdminPlaylistsRoute
   '/_authenticated/admin/schedule': typeof AuthenticatedAdminScheduleRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
+  '/api/public/time': typeof ApiPublicTimeRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/hls/$': typeof ApiPublicHlsSplatRoute
   '/api/public/engine/v1/$': typeof ApiPublicEngineV1SplatRoute
@@ -209,6 +218,7 @@ export interface FileRouteTypes {
     | '/admin/playlists'
     | '/admin/schedule'
     | '/admin/settings'
+    | '/api/public/time'
     | '/admin/'
     | '/api/public/hls/$'
     | '/api/public/engine/v1/$'
@@ -228,6 +238,7 @@ export interface FileRouteTypes {
     | '/admin/playlists'
     | '/admin/schedule'
     | '/admin/settings'
+    | '/api/public/time'
     | '/admin'
     | '/api/public/hls/$'
     | '/api/public/engine/v1/$'
@@ -249,6 +260,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/playlists'
     | '/_authenticated/admin/schedule'
     | '/_authenticated/admin/settings'
+    | '/api/public/time'
     | '/_authenticated/admin/'
     | '/api/public/hls/$'
     | '/api/public/engine/v1/$'
@@ -262,6 +274,7 @@ export interface RootRouteChildren {
   OutputRoute: typeof OutputRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   WatchRoute: typeof WatchRoute
+  ApiPublicTimeRoute: typeof ApiPublicTimeRoute
   ApiPublicHlsSplatRoute: typeof ApiPublicHlsSplatRoute
   ApiPublicEngineV1SplatRoute: typeof ApiPublicEngineV1SplatRoute
 }
@@ -387,6 +400,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminSettingsRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/api/public/time': {
+      id: '/api/public/time'
+      path: '/api/public/time'
+      fullPath: '/api/public/time'
+      preLoaderRoute: typeof ApiPublicTimeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hls/$': {
       id: '/api/public/hls/$'
       path: '/api/public/hls/$'
@@ -453,6 +473,7 @@ const rootRouteChildren: RootRouteChildren = {
   OutputRoute: OutputRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   WatchRoute: WatchRoute,
+  ApiPublicTimeRoute: ApiPublicTimeRoute,
   ApiPublicHlsSplatRoute: ApiPublicHlsSplatRoute,
   ApiPublicEngineV1SplatRoute: ApiPublicEngineV1SplatRoute,
 }

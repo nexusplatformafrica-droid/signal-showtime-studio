@@ -1,3 +1,4 @@
+import { trueDate } from "@/lib/clock";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -83,7 +84,7 @@ function PlaylistEditor({ playlist, canEdit, onDeleted, onDuplicated }: { playli
   const tz = channel.timezone;
   const qc = useQueryClient();
   const [form, setForm] = useState({ name: playlist.name, kind: playlist.kind, shuffle: playlist.shuffle, repeat: playlist.repeat, notes: playlist.notes ?? "" });
-  const [startDate, setStartDate] = useState(() => toZoned(new Date(), tz).date);
+  const [startDate, setStartDate] = useState(() => toZoned(trueDate(), tz).date);
   const [startTime, setStartTime] = useState("20:00");
   const [dragId, setDragId] = useState<string | null>(null);
 

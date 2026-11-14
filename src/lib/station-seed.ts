@@ -1,3 +1,4 @@
+import { trueNow } from "@/lib/clock";
 import type { Db } from "@/lib/db/core";
 import type { Json } from "@/lib/db-types";
 
@@ -39,7 +40,7 @@ export async function seedStation(db: Db) {
   }
   const { data: overlays } = await db.from("graphics_overlays").select("id").eq("channel_id", channelId).limit(1);
   if (!overlays?.length) {
-    const base = Date.now();
+    const base = trueNow();
     await db.from("graphics_overlays").insert(
       OVERLAYS.map((o, i) => ({
         channel_id: channelId,

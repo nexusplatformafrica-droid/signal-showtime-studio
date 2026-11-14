@@ -1,3 +1,4 @@
+import { trueNow } from "@/lib/clock";
 import { useEffect, useRef, useState } from "react";
 import { Maximize, Minimize, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -50,7 +51,7 @@ export function ScheduledPlayer({ bundle, skewMs = 0, poster, controls = true, m
     const v = videoRef.current;
     if (!v) return;
     let errorUntil = 0;
-    const clock = () => Date.now() + skewRef.current;
+    const clock = () => trueNow() + skewRef.current;
     const play = () =>
       v.play().then(() => setBlocked(false)).catch(() => {
         // Browsers block autoplay with sound: fall back to muted so the picture still runs.

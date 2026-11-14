@@ -24,6 +24,8 @@
 - [x] Every graphic has Show now / Take off air and the same timing choices (stays up, once, repeat); graphics stay on screen between programmes; display window uses local time
 - [x] Connect HostHerb: engine/OBS push to RTMPS server, website + apps watch https://watch.hostherb.com/tv-257/index.m3u8 (applied on next station-manager sign-in)
 - [x] Railway option in Settings → Playout engine (stock node image + start command that fetches the engine)
+- [x] Dashboard and website use real online time (not the device clock); schedule form: Start now / After last programme / end by real video length
+- [ ] Update the Railway broadcaster with the final site link (waiting for the user to deploy and send the link)
 - [ ] Start sending to HostHerb: deploy the engine on Railway with an engine token (needs user's Railway account + publish)
 - [ ] Phase 2: Advertisement campaigns & commercial breaks manager
 - [ ] Phase 2: Viewer management & analytics (reports, CSV/PDF export)
