@@ -26,6 +26,7 @@
 - [x] Railway option in Settings → Playout engine (stock node image + start command that fetches the engine)
 - [x] Dashboard and website use real online time (not the device clock); schedule form: Start now / After last programme / end by real video length
 - [x] Update the Railway broadcaster with the final site link (moviemaxlivetv.nexusplatformafrica.workers.dev)
-- [ ] Start sending to HostHerb: deploy the engine on Railway with an engine token (needs user's Railway account + publish)
+- [x] Broadcaster v2.3: crash watchdog (reopens page after "Aw, Snap"), lower memory, Oracle Always Free install option
+- [ ] Start sending to HostHerb 24/7 from a server with enough memory (Oracle Always Free or Railway with 2 GB) — needs the user's account
 - [ ] Phase 2: Advertisement campaigns & commercial breaks manager
 - [ ] Phase 2: Viewer management & analytics (reports, CSV/PDF export)
