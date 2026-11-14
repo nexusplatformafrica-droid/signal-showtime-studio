@@ -12,10 +12,10 @@ export const Route = createFileRoute("/auth")({
   validateSearch: (s) => search.parse(s),
   head: () => ({
     meta: [
-      { title: "Staff sign in — MOVIE MAX TV" },
-      { name: "description", content: "Sign in to the MOVIE MAX TV broadcast control system." },
-      { property: "og:title", content: "Staff sign in — MOVIE MAX TV" },
-      { property: "og:description", content: "Sign in to the MOVIE MAX TV broadcast control system." },
+      { title: "Staff sign in — MOVIE MAX" },
+      { name: "description", content: "Sign in to the MOVIE MAX broadcast control system." },
+      { property: "og:title", content: "Staff sign in — MOVIE MAX" },
+      { property: "og:description", content: "Sign in to the MOVIE MAX broadcast control system." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex" },

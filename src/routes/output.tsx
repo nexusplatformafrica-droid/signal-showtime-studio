@@ -11,10 +11,10 @@ import slate from "@/assets/standby-slate.jpg";
 export const Route = createFileRoute("/output")({
   head: () => ({
     meta: [
-      { title: "MOVIE MAX TV — Programme output" },
-      { name: "description", content: "Full-screen MOVIE MAX TV programme output with on-screen graphics, for broadcasting software." },
-      { property: "og:title", content: "MOVIE MAX TV — Programme output" },
-      { property: "og:description", content: "Full-screen MOVIE MAX TV programme output with on-screen graphics." },
+      { title: "MOVIE MAX — Programme output" },
+      { name: "description", content: "Full-screen MOVIE MAX programme output with on-screen graphics, for broadcasting software." },
+      { property: "og:title", content: "MOVIE MAX — Programme output" },
+      { property: "og:description", content: "Full-screen MOVIE MAX programme output with on-screen graphics." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex" },

@@ -1,160 +1,62 @@
-import { useState, type ReactNode } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
-import { CalendarRange, Clapperboard, House, LogIn, MonitorPlay, Music, Newspaper, Play, Search, Tv } from "lucide-react";
-import { SITE_NAME, Wordmark } from "@/components/brand/Wordmark";
+import { Link } from "@tanstack/react-router";
+import { Play } from "lucide-react";
+import { Wordmark } from "@/components/brand/Wordmark";
 import { OnAirBadge } from "@/components/broadcast/status";
-import type { MediaCategory } from "@/lib/labels";
-import { trueDate } from "@/lib/clock";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
-/** Faint neon glow behind the public pages. Purely decorative. */
+/** Soft pebbles and sun glow behind the public pages. Purely decorative. */
 export function PublicBackdrop() {
   return (
     <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden>
-      <div className="absolute -top-40 left-1/2 h-80 w-[60rem] -translate-x-1/2 rounded-full bg-neon-purple/10 blur-3xl" />
+      <div className="orb orb-sun -right-40 -top-48 size-[34rem] opacity-90" />
+      <div className="orb orb-stone left-[3%] top-40 hidden size-36 md:block" />
+      <div className="orb orb-stone -right-16 top-[42rem] hidden size-56 lg:block" />
+      <div className="orb orb-peach bottom-[18%] left-[6%] hidden size-10 md:block" />
+      <div className="orb orb-peach right-[12%] top-[30rem] size-6" />
     </div>
   );
 }
-
-/** Page frame shared by every public page: top bar, side rail (desktop), tab bar (phone), footer. */
-export function PublicShell({ onAir, engineOnline, webLive = false, description, children, footer = true }: {
-  onAir: boolean; engineOnline: boolean; webLive?: boolean; description?: string | null | undefined; children: ReactNode; footer?: boolean;
-}) {
-  return (
-    <div className="theme-public public-bg relative isolate min-h-screen overflow-x-hidden text-foreground">
-      <PublicHeader onAir={onAir} engineOnline={engineOnline} webLive={webLive} />
-      <PublicRail />
-      <div className="pb-24 pt-[4.5rem] lg:pb-0 lg:pl-[4.75rem]">
-        {children}
-        {footer && <PublicFooter description={description} />}
-      </div>
-      <PublicTabBar />
-    </div>
-  );
-}
-
-const CATEGORY_NAV: { cat: MediaCategory; label: string }[] = [
-  { cat: "movie", label: "Movies" },
-  { cat: "series", label: "Series" },
-  { cat: "news", label: "News" },
-];
-
-const pill = "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-extrabold uppercase tracking-wide transition";
 
 export function PublicHeader({ onAir, engineOnline, webLive = false }: { onAir: boolean; engineOnline: boolean; webLive?: boolean }) {
   return (
-    <header className="fixed inset-x-0 top-2 z-40 flex items-center justify-center gap-3 px-2 lg:pl-[4.75rem]">
-      <div className="neon-ring neon-glow flex h-12 min-w-0 items-center gap-1 rounded-full p-1 [--glow:var(--neon-green)]">
-        <Link to="/" aria-label={`${SITE_NAME} home`} className="flex shrink-0 items-center px-1.5 sm:px-2">
-          <Wordmark neon className="text-[15px]" nameClassName="hidden sm:inline" />
-        </Link>
-        <nav className="hidden items-center gap-0.5 md:flex" aria-label="Main">
-          <Link to="/" className={cn(pill, "text-foreground/85 hover:text-foreground")} activeOptions={{ exact: true, includeSearch: false }} activeProps={{ className: "bg-neon-pink text-primary-foreground" }}>Home</Link>
-          {CATEGORY_NAV.map((n) => (
-            <Link key={n.cat} to="/guide" search={{ cat: n.cat }} className={cn(pill, "text-foreground/85 hover:text-foreground")} activeOptions={{ includeSearch: true }} activeProps={{ className: "bg-neon-pink text-primary-foreground" }}>{n.label}</Link>
-          ))}
+    <header className="sticky top-3 z-30 px-3 md:px-6">
+      <div className="glass mx-auto flex h-14 max-w-7xl items-center gap-4 rounded-full pl-5 pr-2 md:gap-6">
+        <Link to="/" aria-label="MOVIE MAX home"><Wordmark className="text-lg" /></Link>
+        <nav className="hidden items-center gap-1 text-sm font-medium text-muted-foreground sm:flex">
+          <Link to="/" className="rounded-full px-3 py-1.5 hover:text-foreground" activeOptions={{ exact: true }} activeProps={{ className: "bg-panel-raised text-foreground shadow-sm" }}>Home</Link>
+          <Link to="/watch" className="rounded-full px-3 py-1.5 hover:text-foreground" activeProps={{ className: "bg-panel-raised text-foreground shadow-sm" }}>Watch live</Link>
+          <Link to="/guide" className="rounded-full px-3 py-1.5 hover:text-foreground" activeProps={{ className: "bg-panel-raised text-foreground shadow-sm" }}>TV guide</Link>
         </nav>
-        <span className="hidden px-1 lg:inline-flex"><OnAirBadge onAir={onAir} engineOnline={engineOnline} webLive={webLive} /></span>
-        <Link to="/guide" aria-label="Search programmes" className={cn(pill, "w-8 justify-center bg-panel-raised px-0 text-foreground min-[1380px]:hidden")}><Search className="size-4" /></Link>
-        <Link to="/watch" className={cn(pill, "bg-neon-blue text-primary-foreground hover:brightness-110")}><Play className="size-3.5 fill-current" /><span className="hidden sm:inline">Watch live</span></Link>
-        <Link to="/guide" className={cn(pill, "pill-gold hover:brightness-105")}><CalendarRange className="size-3.5" />TV guide</Link>
-        <Link to="/auth" aria-label="Staff login" className={cn(pill, "bg-foreground text-background hover:bg-foreground/90 max-sm:w-8 max-sm:justify-center max-sm:px-0")}><LogIn className="size-3.5" /><span className="hidden sm:inline">Login</span></Link>
+        <div className="ml-auto flex items-center gap-3">
+          <OnAirBadge onAir={onAir} engineOnline={engineOnline} webLive={webLive} />
+          <Button asChild variant="emerald" size="pill-sm" className="hidden sm:inline-flex"><Link to="/watch"><Play />Watch</Link></Button>
+          <Link to="/guide" className="rounded-full px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground sm:hidden">Guide</Link>
+        </div>
       </div>
-      <SearchPill className="hidden min-[1380px]:flex" />
     </header>
-  );
-}
-
-export function SearchPill({ className, initial = "", autoFocus }: { className?: string; initial?: string; autoFocus?: boolean }) {
-  const navigate = useNavigate();
-  const [q, setQ] = useState(initial);
-  return (
-    <form
-      role="search"
-      onSubmit={(e) => { e.preventDefault(); navigate({ to: "/guide", search: { q: q.trim() || undefined } }); }}
-      className={cn("neon-ring h-11 w-72 items-center gap-2 rounded-full px-4 [--ring-gradient:var(--gradient-search)]", className)}
-    >
-      <Search className="size-4 shrink-0 text-neon-purple" />
-      <input value={q} onChange={(e) => setQ(e.target.value)} autoFocus={autoFocus} aria-label="Search programmes" placeholder="Search movies and series" className="w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
-    </form>
-  );
-}
-
-const RAIL: { to: "/" | "/watch" | "/guide"; label: string; icon: typeof House; cat?: MediaCategory }[] = [
-  { to: "/", label: "Home", icon: House },
-  { to: "/watch", label: "Watch live", icon: Tv },
-  { to: "/guide", label: "Movies", icon: Clapperboard, cat: "movie" },
-  { to: "/guide", label: "Series", icon: MonitorPlay, cat: "series" },
-  { to: "/guide", label: "News", icon: Newspaper, cat: "news" },
-  { to: "/guide", label: "Music", icon: Music, cat: "music_video" },
-  { to: "/guide", label: "TV guide", icon: CalendarRange },
-];
-
-function PublicRail() {
-  return (
-    <aside className="neon-ring fixed bottom-4 left-1.5 top-16 z-30 hidden w-[3.6rem] flex-col items-center gap-2 rounded-2xl py-3 shadow-[0_0_22px_-6px_var(--neon-pink)] [--ring-gradient:linear-gradient(180deg,var(--neon-purple),var(--neon-pink))] lg:flex" aria-label="Sections">
-      {RAIL.map((r) => (
-        <Link
-          key={r.label}
-          to={r.to}
-          search={r.cat ? { cat: r.cat } : {}}
-          title={r.label}
-          aria-label={r.label}
-          activeOptions={{ exact: true, includeSearch: true }}
-          className="relative grid size-11 place-items-center rounded-xl text-foreground/75 transition hover:bg-panel-raised hover:text-foreground"
-          activeProps={{ className: "bg-panel-raised !text-foreground before:absolute before:-left-[0.55rem] before:h-6 before:w-1 before:rounded-full before:bg-neon-pink" }}
-        >
-          <r.icon className="size-5" />
-        </Link>
-      ))}
-    </aside>
-  );
-}
-
-const TABS: { to: "/" | "/watch" | "/guide"; label: string; icon: typeof House; cat?: MediaCategory }[] = [
-  { to: "/", label: "Home", icon: House },
-  { to: "/guide", label: "Movies", icon: Clapperboard, cat: "movie" },
-  { to: "/watch", label: "Live", icon: Tv },
-  { to: "/guide", label: "Series", icon: MonitorPlay, cat: "series" },
-  { to: "/guide", label: "Guide", icon: CalendarRange },
-];
-
-function PublicTabBar() {
-  return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-border/70 bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden" aria-label="Sections">
-      {TABS.map((t) => (
-        <Link
-          key={t.label}
-          to={t.to}
-          search={t.cat ? { cat: t.cat } : {}}
-          activeOptions={{ exact: true, includeSearch: true }}
-          className="flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium text-muted-foreground"
-          activeProps={{ className: "!text-foreground [&_svg]:text-neon-pink" }}
-        >
-          <t.icon className="size-5" />
-          {t.label}
-        </Link>
-      ))}
-    </nav>
   );
 }
 
 export function PublicFooter({ description }: { description?: string | null | undefined }) {
   return (
-    <footer className="mx-auto mt-16 max-w-[90rem] px-4 pb-8 md:px-8">
-      <div className="flex flex-col gap-6 border-t border-border/70 pt-8 text-sm text-muted-foreground md:flex-row md:items-start md:justify-between">
-        <div className="max-w-sm">
-          <Wordmark neon className="text-base" />
-          <p className="mt-3 leading-relaxed">{description ?? "Premium movies, series and entertainment, live 24 hours a day."}</p>
+    <footer className="mx-auto mt-20 max-w-7xl px-4 pb-8 md:px-6">
+      <div className="glass grid gap-8 rounded-[2rem] p-8 text-sm text-muted-foreground md:grid-cols-[1.4fr_1fr_1fr]">
+        <div>
+          <Wordmark className="text-lg" />
+          <p className="mt-3 max-w-sm leading-relaxed">{description ?? "Premium movies, series and entertainment, live 24 hours a day."}</p>
         </div>
-        <div className="flex flex-wrap gap-x-8 gap-y-2">
-          <Link to="/watch" className="hover:text-foreground">Watch live</Link>
-          <Link to="/guide" className="hover:text-foreground">7-day TV guide</Link>
-          <Link to="/auth" className="hover:text-foreground">Staff login</Link>
-          <span>Kampala · East Africa Time</span>
+        <div className="space-y-2">
+          <div className="font-headline text-xs font-semibold uppercase tracking-[0.18em] text-foreground">Channel</div>
+          <Link to="/watch" className="block hover:text-foreground">Watch live</Link>
+          <Link to="/guide" className="block hover:text-foreground">7-day TV guide</Link>
+        </div>
+        <div className="space-y-2">
+          <div className="font-headline text-xs font-semibold uppercase tracking-[0.18em] text-foreground">Station</div>
+          <p>Broadcasting from Kampala · East Africa Time</p>
+          <Link to="/auth" className="block hover:text-foreground">Staff sign in</Link>
         </div>
       </div>
-      <div className="pt-6 text-xs text-muted-foreground">© {trueDate().getFullYear()} {SITE_NAME}</div>
+      <div className="pt-5 text-center text-xs text-muted-foreground">© {new Date().getFullYear()} MOVIE MAX</div>
     </footer>
   );
 }

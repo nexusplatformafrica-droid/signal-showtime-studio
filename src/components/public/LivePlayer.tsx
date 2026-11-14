@@ -43,7 +43,7 @@ export function LivePlayer({ channelId, src, onAir, web, className }: { channelI
 
   const offline = (
     <div className="space-y-1">
-      <div className="wordmark text-2xl">MOVIE MAX TV</div>
+      <div className="wordmark text-2xl">MOVIE MAX</div>
       <div className="label-caps">{onAir ? "Stream temporarily unavailable" : "The channel is currently off air"}</div>
     </div>
   );
